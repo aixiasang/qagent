@@ -13,20 +13,23 @@ async def sequential_pipeline(
 ) -> "ChatResponse":
     if len(agents) == 0:
         raise ValueError("No agents provided in pipeline")
-    
+
     current_trace = get_current_trace()
-    
+
     if current_trace:
         current_span = get_current_span()
-        if not (current_span and hasattr(current_span.span_data, 'data') and 
-                current_span.span_data.data.get('pattern') == 'sequential'):
+        if not (
+            current_span
+            and hasattr(current_span.span_data, "data")
+            and current_span.span_data.data.get("pattern") == "sequential"
+        ):
             with custom_span(
                 name="sequential_pipeline",
                 data={
                     "agent_count": len(agents),
-                    "agent_names": [a.name if hasattr(a, 'name') else 'callable' for a in agents],
-                    "pattern": "sequential"
-                }
+                    "agent_names": [a.name if hasattr(a, "name") else "callable" for a in agents],
+                    "pattern": "sequential",
+                },
             ):
                 return await _execute_pipeline(agents, initial_message)
         else:
@@ -50,9 +53,7 @@ async def _execute_pipeline(
                 current_msg = result
         else:
             last_response = None
-            async for response in agent.reply(
-                current_msg.content if current_msg else ""
-            ):
+            async for response in agent.reply(current_msg.content if current_msg else ""):
                 last_response = response
             current_msg = last_response
 

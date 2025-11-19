@@ -45,7 +45,6 @@ from .memory_prompts import (
 )
 
 
-
 REACT_PROMPTS = {
     "openai_base": REACT_OPENAI_BASE,
     "classic_format": CLASSIC_REACT_FORMAT,
@@ -59,7 +58,6 @@ REACT_PROMPTS = {
 }
 
 
-
 ENHANCED_PROMPTS = {
     "quality_evaluator": ENHANCED_QUALITY_EVALUATOR,
     "reflection": ENHANCED_REFLECTION,
@@ -69,7 +67,6 @@ ENHANCED_PROMPTS = {
 }
 
 
-
 ADVANCED_PROMPTS = {
     "plan_react_system": PLAN_REACT_SYSTEM,
     "reflection_system": REFLECTION_SYSTEM,
@@ -77,12 +74,10 @@ ADVANCED_PROMPTS = {
 }
 
 
-
 MEMORY_PROMPTS = {
     "analyze": AGENTIC_MEMORY_ANALYZE,
     "evolution": AGENTIC_MEMORY_EVOLUTION,
 }
-
 
 
 ALL_PROMPTS = {

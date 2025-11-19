@@ -11,58 +11,58 @@ from datetime import datetime
 
 class AgentLogger:
     def __init__(
-        self, 
+        self,
         name: str,
         level: str = "INFO",
         enabled: bool = True,
         log_file: Optional[str] = None,
-        format: Optional[str] = None
+        format: Optional[str] = None,
     ):
         self.enabled = enabled
         self.logger = logging.getLogger(name)
         self.logger.setLevel(getattr(logging, level.upper()))
-        
+
         self.logger.handlers.clear()
-        
+
         if not enabled:
             self.logger.addHandler(logging.NullHandler())
             return
-        
+
         if format is None:
             format = "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
-        
+
         formatter = logging.Formatter(format)
-        
+
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
-        
+
         if log_file:
-            file_handler = logging.FileHandler(log_file, encoding='utf-8')
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
-    
+
     def info(self, msg: str, **kwargs):
         if self.enabled:
             self.logger.info(msg, **kwargs)
-    
+
     def debug(self, msg: str, **kwargs):
         if self.enabled:
             self.logger.debug(msg, **kwargs)
-    
+
     def warning(self, msg: str, **kwargs):
         if self.enabled:
             self.logger.warning(msg, **kwargs)
-    
+
     def error(self, msg: str, **kwargs):
         if self.enabled:
             self.logger.error(msg, **kwargs)
-    
+
     def disable(self):
         self.enabled = False
         self.logger.handlers.clear()
         self.logger.addHandler(logging.NullHandler())
-    
+
     def enable(self):
         self.enabled = True
 
@@ -195,9 +195,7 @@ class FileOperations:
             return {"success": False, "error": type(e).__name__, "message": str(e)}
 
     @staticmethod
-    async def append_file(
-        filepath: str, content: str, encoding: str = "utf-8"
-    ) -> Dict[str, Any]:
+    async def append_file(filepath: str, content: str, encoding: str = "utf-8") -> Dict[str, Any]:
         """
         Append content to existing file.
 
@@ -467,9 +465,7 @@ class DirectoryOperations:
                                 "path": str(item.absolute()),
                                 "type": "dir" if item.is_dir() else "file",
                                 "size": stat.st_size if item.is_file() else None,
-                                "modified": datetime.fromtimestamp(
-                                    stat.st_mtime
-                                ).isoformat(),
+                                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                             }
                         )
                     except Exception:
@@ -503,9 +499,7 @@ class DirectoryOperations:
             Dict with success status and path
         """
         try:
-            await asyncio.to_thread(
-                Path(dirpath).mkdir, parents=parents, exist_ok=exist_ok
-            )
+            await asyncio.to_thread(Path(dirpath).mkdir, parents=parents, exist_ok=exist_ok)
             return {"success": True, "path": dirpath, "status": "created"}
         except FileExistsError:
             return {
@@ -573,20 +567,14 @@ class DirectoryOperations:
         """
         try:
 
-            def _build_tree(
-                path: Path, prefix: str = "", current_depth: int = 0
-            ) -> List[str]:
+            def _build_tree(path: Path, prefix: str = "", current_depth: int = 0) -> List[str]:
                 if current_depth > max_depth:
                     return []
 
                 lines = []
                 try:
-                    items = sorted(
-                        path.iterdir(), key=lambda x: (not x.is_dir(), x.name)
-                    )
-                    items = [
-                        i for i in items if show_hidden or not i.name.startswith(".")
-                    ]
+                    items = sorted(path.iterdir(), key=lambda x: (not x.is_dir(), x.name))
+                    items = [i for i in items if show_hidden or not i.name.startswith(".")]
 
                     for i, item in enumerate(items):
                         is_last = i == len(items) - 1
@@ -595,16 +583,10 @@ class DirectoryOperations:
                         if item.is_dir():
                             lines.append(f"{prefix}{connector}{item.name}/")
                             extension = "    " if is_last else "│   "
-                            lines.extend(
-                                _build_tree(item, prefix + extension, current_depth + 1)
-                            )
+                            lines.extend(_build_tree(item, prefix + extension, current_depth + 1))
                         else:
                             size = item.stat().st_size
-                            size_str = (
-                                f" ({size} bytes)"
-                                if size < 1024
-                                else f" ({size//1024} KB)"
-                            )
+                            size_str = f" ({size} bytes)" if size < 1024 else f" ({size//1024} KB)"
                             lines.append(f"{prefix}{connector}{item.name}{size_str}")
                 except PermissionError:
                     lines.append(f"{prefix}[Permission Denied]")
@@ -778,9 +760,7 @@ class SearchOperations:
                             if context_lines > 0:
                                 start = max(0, line_num - context_lines - 1)
                                 end = min(len(lines), line_num + context_lines)
-                                result["context"] = [
-                                    l.rstrip() for l in lines[start:end]
-                                ]
+                                result["context"] = [l.rstrip() for l in lines[start:end]]
 
                             results.append(result)
 
@@ -902,9 +882,7 @@ class CommandExecutor:
             )
 
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=timeout
-                )
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
 
                 return {
                     "success": process.returncode == 0,
@@ -945,9 +923,7 @@ class CommandExecutor:
         Returns:
             Dict with execution results
         """
-        return await CommandExecutor.run_command(
-            script, cwd=cwd, timeout=timeout, shell=True
-        )
+        return await CommandExecutor.run_command(script, cwd=cwd, timeout=timeout, shell=True)
 
     @staticmethod
     async def kill_process(pid: int, signal: int = 9) -> Dict[str, Any]:
@@ -1026,17 +1002,13 @@ class PythonExecutor:
                     exec(code, {}, local_vars)
                     return "", "", local_vars
 
-            stdout, stderr, local_vars = await asyncio.wait_for(
-                _exec(), timeout=timeout
-            )
+            stdout, stderr, local_vars = await asyncio.wait_for(_exec(), timeout=timeout)
 
             return {
                 "success": True,
                 "stdout": stdout,
                 "stderr": stderr,
-                "locals": {
-                    k: str(v) for k, v in local_vars.items() if not k.startswith("__")
-                },
+                "locals": {k: str(v) for k, v in local_vars.items() if not k.startswith("__")},
             }
         except asyncio.TimeoutError:
             return {
@@ -1129,15 +1101,11 @@ if __name__ == "__main__":
         await dir_ops.create_directory(test_dir)
         print(f"✓ Created directory: {test_dir}")
 
-        write_result = await file_ops.write_file(
-            test_file, "Hello World\nLine 2\nLine 3\n"
-        )
+        write_result = await file_ops.write_file(test_file, "Hello World\nLine 2\nLine 3\n")
         print(f"✓ Write file: {write_result}")
 
         read_result = await file_ops.read_file(test_file)
-        print(
-            f"✓ Read file: success={read_result['success']}, size={read_result.get('size', 0)}"
-        )
+        print(f"✓ Read file: success={read_result['success']}, size={read_result.get('size', 0)}")
 
         lines_result = await file_ops.read_file_lines(test_file, 1, 2)
         print(f"✓ Read lines 1-2: {lines_result['total_lines']} lines")
@@ -1191,9 +1159,7 @@ if __name__ == "__main__":
             print(f"  - {f['name']}")
 
         size_result = await dir_ops.get_directory_size(test_dir)
-        print(
-            f"✓ Directory size: {size_result['size']} bytes ({size_result['size_mb']} MB)"
-        )
+        print(f"✓ Directory size: {size_result['size']} bytes ({size_result['size_mb']} MB)")
 
         print()
         print("=" * 80)
@@ -1205,9 +1171,7 @@ if __name__ == "__main__":
             "TODO: fix this\nNormal line\nTODO: another task\n",
         )
 
-        grep_file_result = await search_ops.grep_in_file(
-            f"{test_dir}/search_test.txt", "TODO"
-        )
+        grep_file_result = await search_ops.grep_in_file(f"{test_dir}/search_test.txt", "TODO")
         print(f"✓ Grep in file: {grep_file_result['count']} matches")
         for match in grep_file_result["matches"]:
             print(f"  Line {match['line_number']}: {match['content']}")
@@ -1234,18 +1198,14 @@ if __name__ == "__main__":
             print(f"✓ Run command 'dir': success={cmd_result['success']}")
             print(f"  Output preview: {cmd_result['stdout'][:100]}...")
 
-            echo_result = await cmd_exec.run_command(
-                "echo Hello from command", timeout=5
-            )
+            echo_result = await cmd_exec.run_command("echo Hello from command", timeout=5)
             print(f"✓ Run echo command: {echo_result['stdout'].strip()}")
         else:
             cmd_result = await cmd_exec.run_command("ls -la", cwd=test_dir, timeout=5)
             print(f"✓ Run command 'ls -la': success={cmd_result['success']}")
             print(f"  Output preview: {cmd_result['stdout'][:100]}...")
 
-            echo_result = await cmd_exec.run_command(
-                'echo "Hello from command"', timeout=5
-            )
+            echo_result = await cmd_exec.run_command('echo "Hello from command"', timeout=5)
             print(f"✓ Run echo command: {echo_result['stdout'].strip()}")
 
         timeout_result = await cmd_exec.run_command("ping 127.0.0.1", timeout=1)
@@ -1264,16 +1224,12 @@ if __name__ == "__main__":
         print(f"  locals: {exec_result['locals']}")
 
         eval_result = await py_exec.eval_python_expr("2 + 3 * 4", timeout=5)
-        print(
-            f"✓ Eval expression: result={eval_result['result']}, type={eval_result['type']}"
-        )
+        print(f"✓ Eval expression: result={eval_result['result']}, type={eval_result['type']}")
 
         await file_ops.write_file(
             f"{test_dir}/test_script.py", "print('Script executed')\nresult = 100 + 200"
         )
-        exec_file_result = await py_exec.exec_python_file(
-            f"{test_dir}/test_script.py", timeout=5
-        )
+        exec_file_result = await py_exec.exec_python_file(f"{test_dir}/test_script.py", timeout=5)
         print(f"✓ Exec Python file: success={exec_file_result['success']}")
         print(f"  stdout: {exec_file_result['stdout'].strip()}")
 

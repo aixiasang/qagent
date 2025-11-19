@@ -269,9 +269,7 @@ class TransformersTokenizer(BaseTokenizer):
         return len(self.encode(text))
 
     def encodes(self, texts: List[str]) -> List[List[int]]:
-        result = self.tokenizer(
-            texts, add_special_tokens=False, padding=False, truncation=False
-        )
+        result = self.tokenizer(texts, add_special_tokens=False, padding=False, truncation=False)
         return result["input_ids"]
 
     def decodes(self, token_sequences: List[List[int]]) -> List[str]:
@@ -356,9 +354,7 @@ class BaseChunker(ABC):
     def chunk_batch(self, texts: List[str]) -> List[List[Chunk]]:
         return [self.chunk(text) for text in texts]
 
-    def __call__(
-        self, text: Union[str, List[str]]
-    ) -> Union[List[Chunk], List[List[Chunk]]]:
+    def __call__(self, text: Union[str, List[str]]) -> Union[List[Chunk], List[List[Chunk]]]:
         if isinstance(text, str):
             return self.chunk(text)
         elif isinstance(text, list):
@@ -423,9 +419,7 @@ class FixedSizeChunker(BaseChunker):
         current_char_index = 0
         current_token_index = 0
 
-        for text, tokens, overlap_len in zip(
-            chunk_texts, token_groups, overlap_lengths
-        ):
+        for text, tokens, overlap_len in zip(chunk_texts, token_groups, overlap_lengths):
             text_stripped = text.strip()
 
             if not text_stripped:
@@ -546,9 +540,7 @@ class SentenceChunker(BaseChunker):
         token_counts = self.tokenizer.counts(sentence_texts)
 
         return [
-            Sentence(
-                text=sent, start_index=pos, end_index=pos + len(sent), token_count=count
-            )
+            Sentence(text=sent, start_index=pos, end_index=pos + len(sent), token_count=count)
             for sent, pos, count in zip(sentence_texts, positions, token_counts)
         ]
 
@@ -572,9 +564,7 @@ class SentenceChunker(BaseChunker):
             return []
 
         token_sums = list(
-            accumulate(
-                [s.token_count for s in sentences], lambda a, b: a + b, initial=0
-            )
+            accumulate([s.token_count for s in sentences], lambda a, b: a + b, initial=0)
         )
 
         chunks = []
@@ -613,9 +603,7 @@ class SentenceChunker(BaseChunker):
         return chunks
 
     def __repr__(self) -> str:
-        return (
-            f"SentenceChunker(tokenizer={self.tokenizer}, chunk_size={self.chunk_size})"
-        )
+        return f"SentenceChunker(tokenizer={self.tokenizer}, chunk_size={self.chunk_size})"
 
 
 class RecursiveChunker(BaseChunker):
@@ -676,9 +664,7 @@ class RecursiveChunker(BaseChunker):
 
         return merged
 
-    def _recursive_split(
-        self, text: str, separators: List[str], start_offset: int
-    ) -> List[Chunk]:
+    def _recursive_split(self, text: str, separators: List[str], start_offset: int) -> List[Chunk]:
         if not text or not text.strip():
             return []
 
@@ -698,8 +684,7 @@ class RecursiveChunker(BaseChunker):
         if not separators:
             tokens = self.tokenizer.encode(text_stripped)
             token_groups = [
-                tokens[i : i + self.chunk_size]
-                for i in range(0, len(tokens), self.chunk_size)
+                tokens[i : i + self.chunk_size] for i in range(0, len(tokens), self.chunk_size)
             ]
             chunk_texts = self.tokenizer.decodes(token_groups)
 
@@ -825,9 +810,7 @@ class SemanticChunker(BaseChunker):
         elif isinstance(result, np.ndarray):
             return result.astype(np.float32)
         else:
-            raise ValueError(
-                f"embedder must return list or ndarray, got {type(result)}"
-            )
+            raise ValueError(f"embedder must return list or ndarray, got {type(result)}")
 
     def _embed_batch(self, texts: List[str]) -> List[np.ndarray]:
         return [self._embed(text) for text in texts]
@@ -943,10 +926,7 @@ class SemanticChunker(BaseChunker):
         for i, sim in enumerate(similarities):
             if sim < self.similarity_threshold:
                 split_idx = i + self.window_size
-                if (
-                    not split_points
-                    or split_idx - split_points[-1] >= self.min_sentences_per_chunk
-                ):
+                if not split_points or split_idx - split_points[-1] >= self.min_sentences_per_chunk:
                     split_points.append(split_idx)
 
         return split_points
@@ -969,9 +949,7 @@ class SemanticChunker(BaseChunker):
 
         return groups
 
-    def _create_chunks_from_groups(
-        self, sentence_groups: List[List[Sentence]]
-    ) -> List[Chunk]:
+    def _create_chunks_from_groups(self, sentence_groups: List[List[Sentence]]) -> List[Chunk]:
         chunks = []
         current_index = 0
 

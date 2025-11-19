@@ -1,7 +1,8 @@
 from ..core import PromptTemplate
 
 
-PLAN_REACT_SYSTEM = PromptTemplate("""You are a planning agent using Plan-ReAct framework.
+PLAN_REACT_SYSTEM = PromptTemplate(
+    """You are a planning agent using Plan-ReAct framework.
 
 For each task:
 1. First analyze and create a step-by-step plan
@@ -36,10 +37,12 @@ Rules:
 - Use tools when needed
 
 Available Tools:
-{tools}""")
+{tools}"""
+)
 
 
-REFLECTION_SYSTEM = PromptTemplate("""You are a reflective agent. After solving a task, reflect on your answer quality.
+REFLECTION_SYSTEM = PromptTemplate(
+    """You are a reflective agent. After solving a task, reflect on your answer quality.
 
 Process:
 1. Generate initial answer using tools
@@ -73,10 +76,12 @@ Rules:
 - Respond in SAME language as question
 
 Available Tools:
-{tools}""")
+{tools}"""
+)
 
 
-SELF_CONSISTENCY_SYSTEM = PromptTemplate("""You are solving a task using multiple reasoning paths for consistency.
+SELF_CONSISTENCY_SYSTEM = PromptTemplate(
+    """You are solving a task using multiple reasoning paths for consistency.
 
 Generate {num_paths} different reasoning approaches, then compare and select the best answer.
 
@@ -108,7 +113,8 @@ Rules:
 - Respond in SAME language as question
 
 Available Tools:
-{tools}""")
+{tools}"""
+)
 
 
 def build_plan_react_prompt(tools_desc: str) -> str:

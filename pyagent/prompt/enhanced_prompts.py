@@ -1,7 +1,8 @@
 from ..core import PromptTemplate
 
 
-ENHANCED_QUALITY_EVALUATOR = PromptTemplate("""You are a quality evaluator. Evaluate the following answer strictly.
+ENHANCED_QUALITY_EVALUATOR = PromptTemplate(
+    """You are a quality evaluator. Evaluate the following answer strictly.
 
 Question: {question}
 Answer: {answer}
@@ -21,10 +22,12 @@ Output ONLY valid JSON:
     "main_issues": ["<issue1>", "<issue2>"]
 }}
 
-Be strict. If score < 7, set needs_improvement to true.""")
+Be strict. If score < 7, set needs_improvement to true."""
+)
 
 
-ENHANCED_REFLECTION = PromptTemplate("""You are in reflection mode. Analyze your previous answer deeply.
+ENHANCED_REFLECTION = PromptTemplate(
+    """You are in reflection mode. Analyze your previous answer deeply.
 
 Question: {question}
 Previous Answer: {previous_answer}
@@ -47,10 +50,12 @@ Output ONLY valid JSON:
     "root_causes": ["<cause1>", "<cause2>"],
     "improvements": ["<action1>", "<action2>"],
     "focus_areas": ["<area1>", "<area2>"]
-}}""")
+}}"""
+)
 
 
-ENHANCED_EXECUTION_WITH_REFLECTION = PromptTemplate("""You are solving a task with reflection feedback.
+ENHANCED_EXECUTION_WITH_REFLECTION = PromptTemplate(
+    """You are solving a task with reflection feedback.
 
 Original Question: {question}
 
@@ -64,10 +69,12 @@ Instructions:
 - Respond in the SAME language as the question
 
 Available Tools:
-{tools}""")
+{tools}"""
+)
 
 
-ENHANCED_SELF_CONSISTENCY_PROMPT = PromptTemplate("""You are solving: {question}
+ENHANCED_SELF_CONSISTENCY_PROMPT = PromptTemplate(
+    """You are solving: {question}
 
 Generate {num_paths} different reasoning paths.
 Each path should use different approaches but reach a valid answer.
@@ -77,10 +84,12 @@ Path 1: [reasoning and answer]
 Path 2: [reasoning and answer]
 ...
 
-Respond in the SAME language as the question.""")
+Respond in the SAME language as the question."""
+)
 
 
-ENHANCED_VALIDATION = PromptTemplate("""You are a strict validator. Verify this answer.
+ENHANCED_VALIDATION = PromptTemplate(
+    """You are a strict validator. Verify this answer.
 
 Question: {question}
 Answer: {answer}
@@ -99,35 +108,27 @@ Output ONLY valid JSON:
     "issues_found": ["<issue1>", "<issue2>"],
     "used_tools": <boolean>,
     "tool_usage_appropriate": <boolean>
-}}""")
+}}"""
+)
 
 
 def get_quality_evaluation_prompt(question: str, answer: str) -> str:
-    return ENHANCED_QUALITY_EVALUATOR.format(
-        question=question,
-        answer=answer
-    ).totext()
+    return ENHANCED_QUALITY_EVALUATOR.format(question=question, answer=answer).totext()
 
 
 def get_reflection_prompt(question: str, previous_answer: str, issues: str) -> str:
     return ENHANCED_REFLECTION.format(
-        question=question,
-        previous_answer=previous_answer,
-        issues=issues
+        question=question, previous_answer=previous_answer, issues=issues
     ).totext()
 
 
-def get_execution_with_reflection_prompt(question: str, reflection_feedback: str, tools: str) -> str:
+def get_execution_with_reflection_prompt(
+    question: str, reflection_feedback: str, tools: str
+) -> str:
     return ENHANCED_EXECUTION_WITH_REFLECTION.format(
-        question=question,
-        reflection_feedback=reflection_feedback,
-        tools=tools
+        question=question, reflection_feedback=reflection_feedback, tools=tools
     ).totext()
 
 
 def get_validation_prompt(question: str, answer: str, steps: str) -> str:
-    return ENHANCED_VALIDATION.format(
-        question=question,
-        answer=answer,
-        steps=steps
-    ).totext()
+    return ENHANCED_VALIDATION.format(question=question, answer=answer, steps=steps).totext()

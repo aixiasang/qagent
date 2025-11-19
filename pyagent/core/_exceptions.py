@@ -23,12 +23,8 @@ class ToolNotFoundError(ToolError):
 
 
 class InvalidArgumentsError(ToolError):
-    def __init__(
-        self, message: str, tool_name: str, provided_args: list, **kwargs: Any
-    ):
-        super().__init__(
-            message, tool_name=tool_name, provided_args=provided_args, **kwargs
-        )
+    def __init__(self, message: str, tool_name: str, provided_args: list, **kwargs: Any):
+        super().__init__(message, tool_name=tool_name, provided_args=provided_args, **kwargs)
 
 
 class MemoryError(AgentError):

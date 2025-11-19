@@ -28,9 +28,7 @@ class VectorStore(ABC):
         pass
 
     @abstractmethod
-    async def search(
-        self, query_embedding: np.ndarray, k: int = 5
-    ) -> List[SearchResult]:
+    async def search(self, query_embedding: np.ndarray, k: int = 5) -> List[SearchResult]:
         pass
 
     @abstractmethod
@@ -246,9 +244,7 @@ class JsonVectorStore(VectorStore):
         self.index["total_count"] += len(ids)
         self.index["updated_at"] = datetime.now().isoformat()
 
-    async def search(
-        self, query_embedding: np.ndarray, k: int = 5
-    ) -> List[SearchResult]:
+    async def search(self, query_embedding: np.ndarray, k: int = 5) -> List[SearchResult]:
         all_results = []
 
         for shard in self.shards:
@@ -368,12 +364,8 @@ class ChromaVectorStore(VectorStore):
             metadatas=metadatas,
         )
 
-    async def search(
-        self, query_embedding: np.ndarray, k: int = 5
-    ) -> List[SearchResult]:
-        results = self.collection.query(
-            query_embeddings=[query_embedding.tolist()], n_results=k
-        )
+    async def search(self, query_embedding: np.ndarray, k: int = 5) -> List[SearchResult]:
+        results = self.collection.query(query_embeddings=[query_embedding.tolist()], n_results=k)
 
         search_results = []
 
@@ -383,14 +375,8 @@ class ChromaVectorStore(VectorStore):
                     SearchResult(
                         id=results["ids"][0][i],
                         text=results["documents"][0][i],
-                        metadata=(
-                            results["metadatas"][0][i] if results["metadatas"] else {}
-                        ),
-                        score=(
-                            1.0 - results["distances"][0][i]
-                            if results["distances"]
-                            else 0.0
-                        ),
+                        metadata=(results["metadatas"][0][i] if results["metadatas"] else {}),
+                        score=(1.0 - results["distances"][0][i] if results["distances"] else 0.0),
                     )
                 )
 
@@ -400,9 +386,7 @@ class ChromaVectorStore(VectorStore):
         self.collection.delete(ids=ids)
 
     async def get(self, ids: List[str]) -> List[Dict[str, Any]]:
-        results = self.collection.get(
-            ids=ids, include=["embeddings", "documents", "metadatas"]
-        )
+        results = self.collection.get(ids=ids, include=["embeddings", "documents", "metadatas"])
 
         output = []
         for i, id_val in enumerate(results["ids"]):
@@ -410,9 +394,7 @@ class ChromaVectorStore(VectorStore):
                 {
                     "id": id_val,
                     "text": results["documents"][i] if results["documents"] else "",
-                    "embedding": (
-                        results["embeddings"][i] if results["embeddings"] else []
-                    ),
+                    "embedding": (results["embeddings"][i] if results["embeddings"] else []),
                     "metadata": results["metadatas"][i] if results["metadatas"] else {},
                 }
             )

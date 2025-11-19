@@ -1,5 +1,4 @@
 import os
-import json
 import base64
 import time
 import threading
@@ -42,15 +41,12 @@ class AudioPlayer:
         self.chunk_size_bytes = chunk_size_ms * sample_rate * 2 // 1000
         self.pya = pyaudio.PyAudio()
         self.stream = self.pya.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=sample_rate,
-            output=True
+            format=pyaudio.paInt16, channels=1, rate=sample_rate, output=True
         )
         self.raw_buffer = queue.Queue()
         self.b64_buffer = queue.Queue()
         self.status_lock = threading.Lock()
-        self.status = 'playing'
+        self.status = "playing"
         self.decoder_thread = threading.Thread(target=self._decoder_loop)
         self.player_thread = threading.Thread(target=self._player_loop)
         self.complete_event = None
@@ -59,7 +55,7 @@ class AudioPlayer:
         self.player_thread.start()
 
     def _decoder_loop(self):
-        while self.status != 'stop':
+        while self.status != "stop":
             data = None
             with contextlib.suppress(queue.Empty):
                 data = self.b64_buffer.get(timeout=0.1)
@@ -67,13 +63,13 @@ class AudioPlayer:
                 continue
             raw = base64.b64decode(data)
             for i in range(0, len(raw), self.chunk_size_bytes):
-                chunk = raw[i:i + self.chunk_size_bytes]
+                chunk = raw[i : i + self.chunk_size_bytes]
                 self.raw_buffer.put(chunk)
                 if self.out_file:
                     self.out_file.write(chunk)
 
     def _player_loop(self):
-        while self.status != 'stop':
+        while self.status != "stop":
             chunk = None
             with contextlib.suppress(queue.Empty):
                 chunk = self.raw_buffer.get(timeout=0.1)
@@ -92,10 +88,10 @@ class AudioPlayer:
         self.complete_event = None
 
     def set_save_file(self, filepath: str):
-        self.out_file = open(filepath, 'wb')
+        self.out_file = open(filepath, "wb")
 
     def shutdown(self):
-        self.status = 'stop'
+        self.status = "stop"
         self.decoder_thread.join()
         self.player_thread.join()
         self.stream.close()
@@ -182,7 +178,7 @@ class CosyVoiceTTS:
             volume=self.config.volume,
             speech_rate=self.config.speech_rate,
             pitch_rate=self.config.pitch_rate,
-            callback=None
+            callback=None,
         )
         audio = synthesizer.call(text)
         if not audio:
@@ -197,7 +193,7 @@ class CosyVoiceTTS:
         self,
         text: str,
         enable_playback: bool = True,
-        audio_callback: Optional[Callable[[bytes], None]] = None
+        audio_callback: Optional[Callable[[bytes], None]] = None,
     ) -> bytes:
         if not text or not text.strip():
             raise TTSException("Empty text")
@@ -205,7 +201,7 @@ class CosyVoiceTTS:
         complete_event = threading.Event()
         audio_data = []
         config = self.config
-        
+
         actual_format = config.format
         if enable_playback:
             if config.format == AudioFormat.MP3_22050HZ_MONO_256KBPS:
@@ -214,7 +210,7 @@ class CosyVoiceTTS:
                 actual_format = AudioFormat.PCM_24000HZ_MONO_16BIT
             elif config.format == AudioFormat.MP3_48000HZ_MONO_256KBPS:
                 actual_format = AudioFormat.PCM_48000HZ_MONO_16BIT
-        
+
         if actual_format == AudioFormat.PCM_22050HZ_MONO_16BIT:
             playback_rate = 22050
         elif actual_format == AudioFormat.PCM_24000HZ_MONO_16BIT:
@@ -231,13 +227,10 @@ class CosyVoiceTTS:
                 if enable_playback:
                     self.player = pyaudio.PyAudio()
                     self.stream = self.player.open(
-                        format=pyaudio.paInt16,
-                        channels=1,
-                        rate=playback_rate,
-                        output=True
+                        format=pyaudio.paInt16, channels=1, rate=playback_rate, output=True
                     )
 
-            def on_open(self) :              
+            def on_open(self):
                 logger.info("Stream opened")
 
             def on_complete(self):
@@ -273,7 +266,7 @@ class CosyVoiceTTS:
             volume=self.config.volume,
             speech_rate=self.config.speech_rate,
             pitch_rate=self.config.pitch_rate,
-            callback=cb
+            callback=cb,
         )
 
         synthesizer.call(text)
@@ -288,12 +281,12 @@ class CosyVoiceTTS:
         self,
         text_chunks: List[str],
         enable_playback: bool = True,
-        audio_callback: Optional[Callable[[bytes], None]] = None
+        audio_callback: Optional[Callable[[bytes], None]] = None,
     ) -> bytes:
         complete_event = threading.Event()
         audio_data = []
         config = self.config
-        
+
         actual_format = config.format
         if enable_playback:
             if config.format == AudioFormat.MP3_22050HZ_MONO_256KBPS:
@@ -302,7 +295,7 @@ class CosyVoiceTTS:
                 actual_format = AudioFormat.PCM_24000HZ_MONO_16BIT
             elif config.format == AudioFormat.MP3_48000HZ_MONO_256KBPS:
                 actual_format = AudioFormat.PCM_48000HZ_MONO_16BIT
-        
+
         if actual_format == AudioFormat.PCM_22050HZ_MONO_16BIT:
             playback_rate = 22050
         elif actual_format == AudioFormat.PCM_24000HZ_MONO_16BIT:
@@ -319,10 +312,7 @@ class CosyVoiceTTS:
                 if enable_playback:
                     self.player = pyaudio.PyAudio()
                     self.stream = self.player.open(
-                        format=pyaudio.paInt16,
-                        channels=1,
-                        rate=playback_rate,
-                        output=True
+                        format=pyaudio.paInt16, channels=1, rate=playback_rate, output=True
                     )
 
             def on_open(self):
@@ -361,7 +351,7 @@ class CosyVoiceTTS:
             volume=self.config.volume,
             speech_rate=self.config.speech_rate,
             pitch_rate=self.config.pitch_rate,
-            callback=cb
+            callback=cb,
         )
 
         for chunk in text_chunks:
@@ -380,7 +370,7 @@ class CosyVoiceTTS:
         try:
             audio = self.synthesize(text)
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 f.write(audio)
             self.logger.info(f"Audio saved to {output_path}")
             return True
@@ -404,10 +394,7 @@ class QwenRealtimeTTS:
         self.finish_event = None
 
     def synthesize_chat(
-        self,
-        text_chunks: List[str],
-        enable_playback: bool = True,
-        save_path: Optional[str] = None
+        self, text_chunks: List[str], enable_playback: bool = True, save_path: Optional[str] = None
     ) -> bytes:
         self.finish_event = threading.Event()
 
@@ -432,16 +419,16 @@ class QwenRealtimeTTS:
 
             def on_event(self, response: str):
                 try:
-                    event_type = response.get('type')
-                    if event_type == 'session.created':
+                    event_type = response.get("type")
+                    if event_type == "session.created":
                         self.parent.logger.info(f"Session: {response['session']['id']}")
-                    elif event_type == 'response.audio.delta':
-                        audio_b64 = response['delta']
+                    elif event_type == "response.audio.delta":
+                        audio_b64 = response["delta"]
                         if self.parent.player:
                             self.parent.player.add_data(audio_b64)
-                    elif event_type == 'response.done':
+                    elif event_type == "response.done":
                         self.parent.logger.info("Response done")
-                    elif event_type == 'session.finished':
+                    elif event_type == "session.finished":
                         self.parent.logger.info("Session finished")
                         self.parent.finish_event.set()
                 except Exception as e:
@@ -449,16 +436,13 @@ class QwenRealtimeTTS:
                     self.parent.finish_event.set()
 
         callback = QwenCallback(self)
-        self.qwen = QwenTtsRealtime(
-            model=self.config.model,
-            callback=callback
-        )
+        self.qwen = QwenTtsRealtime(model=self.config.model, callback=callback)
 
         self.qwen.connect()
         self.qwen.update_session(
             voice=self.config.voice,
             response_format=QwenAudioFormat.PCM_24000HZ_MONO_16BIT,
-            mode=self.config.mode.value
+            mode=self.config.mode.value,
         )
 
         for text in text_chunks:
@@ -472,7 +456,9 @@ class QwenRealtimeTTS:
         self.finish_event.wait()
         self.qwen.close()
 
-        self.logger.info(f"Session: {self.qwen.get_session_id()}, Delay: {self.qwen.get_first_audio_delay()}")
+        self.logger.info(
+            f"Session: {self.qwen.get_session_id()}, Delay: {self.qwen.get_first_audio_delay()}"
+        )
         return b""
 
 
@@ -490,12 +476,12 @@ class SambertTTS:
             model=self.config.model,
             text=text,
             sample_rate=self.config.sample_rate,
-            format=self.config.format
+            format=self.config.format,
         )
 
         response = result.get_response()
         if response:
-            self._last_request_id = response.get('request_id')
+            self._last_request_id = response.get("request_id")
             self.logger.info(f"Request ID: {self._last_request_id}")
 
         audio = result.get_audio_data()
@@ -509,7 +495,7 @@ class SambertTTS:
         self,
         text: str,
         enable_playback: bool = True,
-        audio_callback: Optional[Callable[[bytes], None]] = None
+        audio_callback: Optional[Callable[[bytes], None]] = None,
     ) -> bytes:
         if not text or not text.strip():
             raise TTSException("Empty text")
@@ -525,10 +511,7 @@ class SambertTTS:
                 if enable_playback:
                     self.player = pyaudio.PyAudio()
                     self.stream = self.player.open(
-                        format=pyaudio.paInt16,
-                        channels=1,
-                        rate=config.sample_rate,
-                        output=True
+                        format=pyaudio.paInt16, channels=1, rate=config.sample_rate, output=True
                     )
 
             def on_open(self):
@@ -564,14 +547,14 @@ class SambertTTS:
             text=text,
             sample_rate=self.config.sample_rate,
             format=self.config.format,
-            callback=cb
+            callback=cb,
         )
 
         complete_event.wait()
 
         response = result.get_response()
         if response:
-            self._last_request_id = response.get('request_id')
+            self._last_request_id = response.get("request_id")
 
         return b"".join(audio_data)
 
@@ -579,7 +562,7 @@ class SambertTTS:
         try:
             audio = self.synthesize(text)
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 f.write(audio)
             self.logger.info(f"Audio saved to {output_path}")
             return True
@@ -593,42 +576,35 @@ class SambertTTS:
 
 class ChatTTS:
     def __init__(
-        self,
-        backend: str = 'cosy',
-        api_key: Optional[str] = None,
-        voice: str = None,
-        **kwargs
+        self, backend: str = "cosy", api_key: Optional[str] = None, voice: str = None, **kwargs
     ):
         self.backend = backend
         self.logger = logging.getLogger(__name__)
 
-        if backend == 'cosy':
+        if backend == "cosy":
             if voice is None:
-                voice = 'longhua_v2'
+                voice = "longhua_v2"
             config = TTSConfig(
                 api_key=api_key,
                 voice=voice,
                 format=AudioFormat.MP3_22050HZ_MONO_256KBPS,
                 sample_rate=22050,
-                **kwargs
+                **kwargs,
             )
             self.engine = CosyVoiceTTS(config)
-        elif backend == 'qwen':
+        elif backend == "qwen":
             if voice is None:
-                voice = 'Cherry'
+                voice = "Cherry"
             config = QwenConfig(
                 api_key=api_key,
                 voice=voice,
                 mode=SessionMode.SERVER_COMMIT,
                 sample_rate=24000,
-                **kwargs
+                **kwargs,
             )
             self.engine = QwenRealtimeTTS(config)
-        elif backend == 'sambert':
-            config = SambertConfig(
-                api_key=api_key,
-                **kwargs
-            )
+        elif backend == "sambert":
+            config = SambertConfig(api_key=api_key, **kwargs)
             self.engine = SambertTTS(config)
         else:
             raise TTSException(f"Unknown backend: {backend}")
@@ -638,29 +614,29 @@ class ChatTTS:
         text_chunks: List[str],
         enable_playback: bool = True,
         audio_callback: Optional[Callable[[bytes], None]] = None,
-        save_path: Optional[str] = None
+        save_path: Optional[str] = None,
     ) -> bytes:
-        if self.backend == 'cosy':
+        if self.backend == "cosy":
             audio = self.engine.synthesize_chat(text_chunks, enable_playback, audio_callback)
             if save_path:
                 Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-                with open(save_path, 'wb') as f:
+                with open(save_path, "wb") as f:
                     f.write(audio)
             return audio
-        elif self.backend == 'sambert':
+        elif self.backend == "sambert":
             text = " ".join(text_chunks)
             audio = self.engine.synthesize_streaming(text, enable_playback, audio_callback)
             if save_path:
                 Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-                with open(save_path, 'wb') as f:
+                with open(save_path, "wb") as f:
                     f.write(audio)
             return audio
         else:
             return self.engine.synthesize_chat(text_chunks, enable_playback, save_path)
 
     def speak_simple(self, text: str, enable_playback: bool = True) -> bytes:
-        if self.backend in ['cosy', 'sambert']:
-            if hasattr(self.engine, 'synthesize'):
+        if self.backend in ["cosy", "sambert"]:
+            if hasattr(self.engine, "synthesize"):
                 return self.engine.synthesize(text)
         return self.speak([text], enable_playback)
 
@@ -671,14 +647,9 @@ class TTSFactory:
         api_key: Optional[str] = None,
         model: str = "cosyvoice-v2",
         voice: str = "longhua_v2",
-        **kwargs
+        **kwargs,
     ) -> CosyVoiceTTS:
-        config = TTSConfig(
-            api_key=api_key,
-            model=model,
-            voice=voice,
-            **kwargs
-        )
+        config = TTSConfig(api_key=api_key, model=model, voice=voice, **kwargs)
         return CosyVoiceTTS(config)
 
     @staticmethod
@@ -687,39 +658,26 @@ class TTSFactory:
         model: str = "qwen-tts-realtime",
         voice: str = "Cherry",
         mode: SessionMode = SessionMode.SERVER_COMMIT,
-        **kwargs
+        **kwargs,
     ) -> QwenRealtimeTTS:
-        config = QwenConfig(
-            api_key=api_key,
-            model=model,
-            voice=voice,
-            mode=mode,
-            **kwargs
-        )
+        config = QwenConfig(api_key=api_key, model=model, voice=voice, mode=mode, **kwargs)
         return QwenRealtimeTTS(config)
 
     @staticmethod
     def create_sambert(
-        api_key: Optional[str] = None,
-        model: str = "sambert-zhichu-v1",
-        **kwargs
+        api_key: Optional[str] = None, model: str = "sambert-zhichu-v1", **kwargs
     ) -> SambertTTS:
-        config = SambertConfig(
-            api_key=api_key,
-            model=model,
-            **kwargs
-        )
+        config = SambertConfig(api_key=api_key, model=model, **kwargs)
         return SambertTTS(config)
 
     @staticmethod
-    def create_chat_tts(backend: str = 'cosy', **kwargs) -> ChatTTS:
+    def create_chat_tts(backend: str = "cosy", **kwargs) -> ChatTTS:
         return ChatTTS(backend=backend, **kwargs)
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     os.makedirs("test_outputs", exist_ok=True)
@@ -743,7 +701,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("Test 3: Chat TTS (CosyVoice)")
     print("=" * 80)
-    chat = TTSFactory.create_chat_tts(backend='cosy', voice='longhua_v2')
+    chat = TTSFactory.create_chat_tts(backend="cosy", voice="longhua_v2")
     chunks = ["Hello", "this is", "a test", "of chat mode"]
     audio_chat = chat.speak(chunks, enable_playback=True, save_path="test_outputs/test_chat.mp3")
     print(f"Chat audio: {len(audio_chat)} bytes")
@@ -767,22 +725,19 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("Test 6: Sambert TTS Streaming")
     print("=" * 80)
-    sambert_stream = TTSFactory.create_sambert(format='pcm')
+    sambert_stream = TTSFactory.create_sambert(format="pcm")
     audio_sambert_stream = sambert_stream.synthesize_streaming(
-        "Testing Sambert streaming",
-        enable_playback=True
+        "Testing Sambert streaming", enable_playback=True
     )
     print(f"Sambert streamed audio: {len(audio_sambert_stream)} bytes")
 
     print("\n" + "=" * 80)
     print("Test 7: Chat TTS with Sambert Backend")
     print("=" * 80)
-    chat_sambert = TTSFactory.create_chat_tts(backend='sambert')
+    chat_sambert = TTSFactory.create_chat_tts(backend="sambert")
     chunks_sambert = ["Test one", "Test two", "Test three"]
     audio_chat_sambert = chat_sambert.speak(
-        chunks_sambert,
-        enable_playback=True,
-        save_path="test_outputs/chat_sambert.pcm"
+        chunks_sambert, enable_playback=True, save_path="test_outputs/chat_sambert.pcm"
     )
     print(f"Chat Sambert audio: {len(audio_chat_sambert)} bytes")
 

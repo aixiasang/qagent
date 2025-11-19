@@ -1,7 +1,8 @@
 from ..core import PromptTemplate
 
 
-AGENTIC_MEMORY_ANALYZE = PromptTemplate("""Generate a structured analysis of the following content by:
+AGENTIC_MEMORY_ANALYZE = PromptTemplate(
+    """Generate a structured analysis of the following content by:
 1. Identifying the most salient keywords (focus on nouns, verbs, and key concepts)
 2. Extracting core themes and contextual elements
 3. Creating relevant categorical tags
@@ -28,10 +29,12 @@ Format the response as a JSON object:
 }}
 
 Content for analysis:
-{content}""")
+{content}"""
+)
 
 
-AGENTIC_MEMORY_EVOLUTION = PromptTemplate("""You are an AI memory evolution agent responsible for managing and evolving a knowledge base.
+AGENTIC_MEMORY_EVOLUTION = PromptTemplate(
+    """You are an AI memory evolution agent responsible for managing and evolving a knowledge base.
 Analyze the the new memory note according to keywords and context, also with their several nearest neighbors memory.
 Make decisions about its evolution.  
 
@@ -59,7 +62,8 @@ Return your decision in JSON format with the following structure:
     "tags_to_update": ["tag_1",...,"tag_n"], 
     "new_context_neighborhood": ["new context",...,"new context"],
     "new_tags_neighborhood": [["tag_1",...,"tag_n"],...,["tag_1",...,"tag_n"]],
-}}""")
+}}"""
+)
 
 
 def get_agentic_memory_analyze_prompt(content: str) -> str:
@@ -67,16 +71,12 @@ def get_agentic_memory_analyze_prompt(content: str) -> str:
 
 
 def get_agentic_memory_evolution_prompt(
-    content: str,
-    context: str,
-    keywords: list,
-    nearest_neighbors: str,
-    neighbor_number: int
+    content: str, context: str, keywords: list, nearest_neighbors: str, neighbor_number: int
 ) -> str:
     return AGENTIC_MEMORY_EVOLUTION.format(
         content=content,
         context=context,
         keywords=str(keywords),
         nearest_neighbors_memories=nearest_neighbors,
-        neighbor_number=neighbor_number
+        neighbor_number=neighbor_number,
     ).totext()

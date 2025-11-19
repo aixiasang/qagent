@@ -76,9 +76,7 @@ class PromptTemplate:
                 keywords.update(item)
             else:
                 if found_dict:
-                    raise ValueError(
-                        "Positional arguments must come before keyword arguments"
-                    )
+                    raise ValueError("Positional arguments must come before keyword arguments")
                 positional.append(item)
 
         return positional, keywords
@@ -138,9 +136,7 @@ class PromptTemplate:
         return new_prompt
 
     def totext(self) -> str:
-        return self._render_template(
-            self.template, self._filled_positional, self._filled_keywords
-        )
+        return self._render_template(self.template, self._filled_positional, self._filled_keywords)
 
     def get_remaining_variables(self) -> Set[str]:
         all_vars = self._extract_variables()

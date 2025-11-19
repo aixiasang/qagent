@@ -204,7 +204,7 @@ class ToolKit:
 
         current_trace = get_current_trace()
         disabled = current_trace is None
-        
+
         func = self._tools[name]
 
         with tool_span(
@@ -218,18 +218,20 @@ class ToolKit:
                 else:
                     loop = asyncio.get_event_loop()
                     result = await loop.run_in_executor(None, lambda: func(**kwargs))
-                
+
                 if not disabled:
                     span.span_data.output = result
-                
+
                 return result
             except TypeError as e:
                 if not disabled:
                     span.span_data.error = str(e)
-                    span.set_error(SpanError(
-                        message=f"Invalid arguments for tool {name}",
-                        data={"tool_name": name, "error_type": "TypeError"}
-                    ))
+                    span.set_error(
+                        SpanError(
+                            message=f"Invalid arguments for tool {name}",
+                            data={"tool_name": name, "error_type": "TypeError"},
+                        )
+                    )
                 raise InvalidArgumentsError(
                     message=str(e), tool_name=name, provided_args=list(kwargs.keys())
                 )
@@ -240,38 +242,40 @@ class ToolKit:
             except Exception as e:
                 if not disabled:
                     span.span_data.error = str(e)
-                    span.set_error(SpanError(
-                        message=f"Tool execution failed: {name}",
-                        data={"tool_name": name, "error_type": type(e).__name__}
-                    ))
-                raise ToolError(
-                    message=str(e), tool_name=name, error_detail=type(e).__name__
-                )
+                    span.set_error(
+                        SpanError(
+                            message=f"Tool execution failed: {name}",
+                            data={"tool_name": name, "error_type": type(e).__name__},
+                        )
+                    )
+                raise ToolError(message=str(e), tool_name=name, error_detail=type(e).__name__)
 
     async def execute_many(self, calls: List[Dict]) -> List[Any]:
         current_trace = get_current_trace()
         disabled = current_trace is None
-        
+
         tool_names = []
         for call in calls:
             name = call.get("name") or call.get("function", {}).get("name")
             if name:
                 tool_names.append(name)
-        
+
         with custom_span(
             name="batch_tool_execution",
-            data={
-                "tool_count": len(calls),
-                "tool_names": tool_names,
-            } if not disabled else None,
+            data=(
+                {
+                    "tool_count": len(calls),
+                    "tool_names": tool_names,
+                }
+                if not disabled
+                else None
+            ),
             disabled=disabled,
         ) as batch_span:
             tasks = []
             for call in calls:
                 name = call.get("name") or call.get("function", {}).get("name")
-                arguments = call.get("arguments") or call.get("function", {}).get(
-                    "arguments", {}
-                )
+                arguments = call.get("arguments") or call.get("function", {}).get("arguments", {})
 
                 if isinstance(arguments, str):
                     import json
@@ -282,20 +286,22 @@ class ToolKit:
 
             try:
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 if not disabled:
                     success_count = sum(1 for r in results if not isinstance(r, Exception))
                     error_count = len(results) - success_count
                     batch_span.span_data.data["success_count"] = success_count
                     batch_span.span_data.data["error_count"] = error_count
-                
+
                 return results
             except Exception as e:
                 if not disabled:
-                    batch_span.set_error(SpanError(
-                        message=f"Batch tool execution failed",
-                        data={"error_type": type(e).__name__}
-                    ))
+                    batch_span.set_error(
+                        SpanError(
+                            message=f"Batch tool execution failed",
+                            data={"error_type": type(e).__name__},
+                        )
+                    )
                 raise
 
     def to_openai_tools(self) -> List[Dict]:
@@ -314,9 +320,9 @@ class ToolKit:
             }
 
             if "required" in schema["parameters"]:
-                function_schema["function"]["parameters"]["required"] = schema[
-                    "parameters"
-                ]["required"]
+                function_schema["function"]["parameters"]["required"] = schema["parameters"][
+                    "required"
+                ]
 
             tools.append(function_schema)
         return tools
@@ -359,9 +365,7 @@ class ToolKit:
         )
         await self._add_mcp_server(config, auto_register)
 
-    async def _add_mcp_server(
-        self, config: "MCPServerConfig", auto_register: bool = True
-    ):
+    async def _add_mcp_server(self, config: "MCPServerConfig", auto_register: bool = True):
         client = MCPClient(config)
         await client.connect()
 
@@ -383,9 +387,7 @@ class ToolKit:
             tool_name = f"{config.prefix}__{tool['name']}"
             self._register_mcp_tool(tool_name, client, tool)
 
-    def _register_mcp_tool(
-        self, tool_name: str, client: "MCPClient", tool_schema: Dict
-    ):
+    def _register_mcp_tool(self, tool_name: str, client: "MCPClient", tool_schema: Dict):
         original_name = tool_schema["name"]
         description = tool_schema.get("description", "")
         input_schema = tool_schema.get("inputSchema", {})
@@ -410,9 +412,7 @@ class ToolKit:
 
         sig_params = []
         for param_name, param_schema in properties.items():
-            param_type = JSON_TO_PYTHON_TYPE_MAP.get(
-                param_schema.get("type", "string"), str
-            )
+            param_type = JSON_TO_PYTHON_TYPE_MAP.get(param_schema.get("type", "string"), str)
             default = inspect.Parameter.empty if param_name in required else None
             sig_params.append(
                 inspect.Parameter(
@@ -717,9 +717,7 @@ if __name__ == "__main__":
                 prefix="thinking",
             )
             print(f"[OK] Sequential Thinking server connected (stdio)")
-            print(
-                f"[OK] Registered tools: {[t for t in registry.list_tools() if 'thinking' in t]}"
-            )
+            print(f"[OK] Registered tools: {[t for t in registry.list_tools() if 'thinking' in t]}")
             print()
         except Exception as e:
             print(f"[FAIL] {e}")
@@ -738,9 +736,7 @@ if __name__ == "__main__":
                     prefix="ali",
                 )
                 print(f"[OK] Ali WebSearch server connected (SSE)")
-                print(
-                    f"[OK] Registered tools: {[t for t in registry.list_tools() if 'ali' in t]}"
-                )
+                print(f"[OK] Registered tools: {[t for t in registry.list_tools() if 'ali' in t]}")
                 print()
             except Exception as e:
                 print(f"[FAIL] {e}")
@@ -813,9 +809,7 @@ if __name__ == "__main__":
                     print(f"[OK] Execution result: {result}")
                     print()
                 else:
-                    print(
-                        f"[OK] Tool available but skipping execution (unknown params)"
-                    )
+                    print(f"[OK] Tool available but skipping execution (unknown params)")
                     print()
             except Exception as e:
                 print(f"[FAIL] Execution failed: {e}")
@@ -832,18 +826,14 @@ if __name__ == "__main__":
         print(
             f"Regular tools: {len([t for t in all_openai_tools if '__' not in t['function']['name']])}"
         )
-        print(
-            f"MCP tools: {len([t for t in all_openai_tools if '__' in t['function']['name']])}"
-        )
+        print(f"MCP tools: {len([t for t in all_openai_tools if '__' in t['function']['name']])}")
         print()
 
         print("=" * 70)
         print("Test 2.8: MCP Invalid Arguments Handling")
         print("=" * 70)
         if saved_thinking_tools:
-            result = await registry.execute(
-                saved_thinking_tools[0], invalid_param="test"
-            )
+            result = await registry.execute(saved_thinking_tools[0], invalid_param="test")
             print(f"Result: {json.dumps(result, indent=2, ensure_ascii=False)}")
             print()
         else:

@@ -191,7 +191,8 @@ class ToolSpanData(SpanData):
         }
         if self.input_args is not None:
             result["input_args"] = (
-                self.input_args if isinstance(self.input_args, str) 
+                self.input_args
+                if isinstance(self.input_args, str)
                 else json.dumps(self.input_args, ensure_ascii=False)
             )
         if self.output is not None:
@@ -378,9 +379,7 @@ class MemoryTracingProcessor(TracingProcessor):
                 "spans": self.spans,
                 "agents": self.agents,
             }
-        Path(filepath).write_text(
-            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        Path(filepath).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 class Trace(abc.ABC):
@@ -730,9 +729,7 @@ class SpanImpl(Span[TSpanData]):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None and exc_type is not GeneratorExit:
-            self.set_error(
-                SpanError(message=str(exc_val), data={"exc_type": exc_type.__name__})
-            )
+            self.set_error(SpanError(message=str(exc_val), data={"exc_type": exc_type.__name__}))
         self.finish(reset_current=True)
 
     def export(self) -> dict[str, Any] | None:
@@ -979,7 +976,7 @@ def tool_span(
 
 
 def custom_span(
-    name: str, 
+    name: str,
     data: dict[str, Any] | None = None,
     disabled: bool = False,
 ) -> Span[CustomSpanData]:

@@ -177,9 +177,7 @@ class MultimodalContent:
     ) -> None:
         self.blocks.append(ImageBlock(url=url, base64=base64, detail=detail))
 
-    def add_video(
-        self, url: Optional[str] = None, base64: Optional[str] = None
-    ) -> None:
+    def add_video(self, url: Optional[str] = None, base64: Optional[str] = None) -> None:
         self.blocks.append(VideoBlock(url=url, base64=base64))
 
     def add_audio(
@@ -244,9 +242,7 @@ class EmbedUsage:
 class EmbedResponse:
     source: Literal["api", "cache"]
     embedding: list[float]
-    usage: Optional[EmbedUsage] = field(
-        default_factory=lambda: EmbedUsage(time=0, token=0)
-    )
+    usage: Optional[EmbedUsage] = field(default_factory=lambda: EmbedUsage(time=0, token=0))
 
     def to_dict(self) -> dict:
         return {k: v for k, v in asdict(self).items() if v}
@@ -270,9 +266,7 @@ class ToolCall:
         return cls(**data)
 
     def to_openai(self) -> dict:
-        args = (
-            self.fn_args if isinstance(self.fn_args, str) else json.dumps(self.fn_args)
-        )
+        args = self.fn_args if isinstance(self.fn_args, str) else json.dumps(self.fn_args)
         return {
             "id": self.fn_id,
             "type": "function",
@@ -394,15 +388,10 @@ class ChatResponse:
             role=data.get("role", "assistant"),
             content=data.get("content", ""),
             reasoning_content=data.get("reasoning_content", ""),
-            tool_call=(
-                ToolCall.from_dict(data["tool_call"]) if data.get("tool_call") else None
-            ),
-            tool_calls=[
-                ToolCall.from_dict(tool_call) for tool_call in data.get("tool_calls", [])
-            ],
+            tool_call=(ToolCall.from_dict(data["tool_call"]) if data.get("tool_call") else None),
+            tool_calls=[ToolCall.from_dict(tool_call) for tool_call in data.get("tool_calls", [])],
             tool_results=[
-                ToolResult.from_dict(tool_result)
-                for tool_result in data.get("tool_results", [])
+                ToolResult.from_dict(tool_result) for tool_result in data.get("tool_results", [])
             ],
             usage=ChatUsage.from_dict(data["usage"]) if data.get("usage") else None,
         )
@@ -431,9 +420,7 @@ class ChatResponse:
                 base_msg = {
                     "role": "assistant",
                     "content": content_openai or None,
-                    "tool_calls": [
-                        tool_call.to_openai() for tool_call in self.tool_calls
-                    ],
+                    "tool_calls": [tool_call.to_openai() for tool_call in self.tool_calls],
                 }
             else:
                 base_msg = {"role": "assistant", "content": content_openai or None}
@@ -577,9 +564,7 @@ class Memory:
         n: Optional[int] = None,
         filter_func: Optional[Callable[[ChatResponse], bool]] = None,
     ) -> list[ChatResponse]:
-        messages = (
-            self.messages.copy() if n is None else self.messages[-n:] if n > 0 else []
-        )
+        messages = self.messages.copy() if n is None else self.messages[-n:] if n > 0 else []
         if filter_func:
             messages = [m for m in messages if filter_func(m)]
         return messages
@@ -600,9 +585,7 @@ class Memory:
         import json
 
         with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(
-                [m.to_dict() for m in self.messages], f, ensure_ascii=False, indent=2
-            )
+            json.dump([m.to_dict() for m in self.messages], f, ensure_ascii=False, indent=2)
 
     def load_json(self, filepath: str, overwrite: bool = False) -> None:
         import json
@@ -616,9 +599,7 @@ class Memory:
         for item in data:
             self.messages.append(ChatResponse.from_dict(item))
 
-    def to_openai(
-        self, include_reasoning: bool = False, n: Optional[int] = None
-    ) -> list[dict]:
+    def to_openai(self, include_reasoning: bool = False, n: Optional[int] = None) -> list[dict]:
         messages = self.get(n)
         result = []
 
@@ -677,12 +658,10 @@ class Chater:
     ):
         current_trace = get_current_trace()
         disabled = current_trace is None
-        
+
         retry_decorator = retry(
             stop=stop_after_attempt(self.max_retries),
-            wait=wait_exponential(
-                multiplier=1, min=self.retry_min_wait, max=self.retry_max_wait
-            ),
+            wait=wait_exponential(multiplier=1, min=self.retry_min_wait, max=self.retry_max_wait),
             retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
             reraise=True,
         )
@@ -717,12 +696,14 @@ class Chater:
             )
 
         if stream:
-            return self._stream_with_trace(
-                await _do_chat(), messages, kwargs_inner, disabled
-            )
+            return self._stream_with_trace(await _do_chat(), messages, kwargs_inner, disabled)
         else:
-            params = {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]} if not disabled else None
-            
+            params = (
+                {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]}
+                if not disabled
+                else None
+            )
+
             with generation_span(
                 model=kwargs_inner.get("model"),
                 input_msgs=messages if not disabled else None,
@@ -736,14 +717,18 @@ class Chater:
                             "role": result.role,
                             "content": result.content,
                             "reasoning_content": result.reasoning_content,
-                            "tool_calls": [
-                                {
-                                    "fn_id": tc.fn_id,
-                                    "fn_name": tc.fn_name,
-                                    "fn_args": tc.fn_args,
-                                }
-                                for tc in result.tool_calls
-                            ] if result.tool_calls else None,
+                            "tool_calls": (
+                                [
+                                    {
+                                        "fn_id": tc.fn_id,
+                                        "fn_name": tc.fn_name,
+                                        "fn_args": tc.fn_args,
+                                    }
+                                    for tc in result.tool_calls
+                                ]
+                                if result.tool_calls
+                                else None
+                            ),
                         }
                         span.span_data.usage = {
                             "input_tokens": result.usage.input_tokens,
@@ -753,10 +738,15 @@ class Chater:
                     return result
                 except Exception as e:
                     if not disabled:
-                        span.set_error(SpanError(
-                            message=f"Model generation failed: {str(e)}",
-                            data={"model": kwargs_inner.get("model"), "error_type": type(e).__name__}
-                        ))
+                        span.set_error(
+                            SpanError(
+                                message=f"Model generation failed: {str(e)}",
+                                data={
+                                    "model": kwargs_inner.get("model"),
+                                    "error_type": type(e).__name__,
+                                },
+                            )
+                        )
                     raise
 
     def _no_stream(
@@ -772,9 +762,7 @@ class Chater:
             else ""
         )
         content = msg.content if hasattr(msg, "content") and msg.content else ""
-        tool_calls = (
-            msg.tool_calls if hasattr(msg, "tool_calls") and msg.tool_calls else []
-        )
+        tool_calls = msg.tool_calls if hasattr(msg, "tool_calls") and msg.tool_calls else []
         if tool_calls:
             tools = [
                 ToolCall(
@@ -841,9 +829,7 @@ class Chater:
 
             if hasattr(delta, "content") and delta.content:
                 content = delta.content
-                yield ChatResponse(
-                    id=id, created=created, role=role, content=content, usage=usage
-                )
+                yield ChatResponse(id=id, created=created, role=role, content=content, usage=usage)
 
             current_tool_indices = set()
             for tool_call in delta.tool_calls or []:
@@ -851,9 +837,7 @@ class Chater:
 
                 if tool_call.index in tool_calls:
                     if tool_call.function.arguments:
-                        tool_calls[
-                            tool_call.index
-                        ].fn_args += tool_call.function.arguments
+                        tool_calls[tool_call.index].fn_args += tool_call.function.arguments
                 else:
                     tool_calls[tool_call.index] = ToolCall(
                         fn_id=tool_call.id,
@@ -861,9 +845,7 @@ class Chater:
                         fn_args=tool_call.function.arguments or "",
                     )
 
-            completed_indices = (
-                set(tool_calls.keys()) - current_tool_indices - completed_calls
-            )
+            completed_indices = set(tool_calls.keys()) - current_tool_indices - completed_calls
             for tool_idx in completed_indices:
                 completed_calls.add(tool_idx)
                 yield ChatResponse(
@@ -873,7 +855,7 @@ class Chater:
                     tool_call=tool_calls[tool_idx],
                     usage=usage,
                 )
-    
+
     async def _stream_with_trace(
         self,
         stream_generator: AsyncGenerator[ChatResponse, None],
@@ -881,8 +863,12 @@ class Chater:
         kwargs_inner: dict,
         disabled: bool,
     ) -> AsyncGenerator[ChatResponse, None]:
-        params = {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]} if not disabled else None
-        
+        params = (
+            {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]}
+            if not disabled
+            else None
+        )
+
         with generation_span(
             model=kwargs_inner.get("model"),
             input_msgs=messages if not disabled else None,
@@ -894,7 +880,7 @@ class Chater:
             all_tool_calls = []
             final_usage = None
             final_role = "assistant"
-            
+
             try:
                 async for chunk in stream_generator:
                     if chunk.content:
@@ -907,22 +893,26 @@ class Chater:
                         final_usage = chunk.usage
                     if chunk.role:
                         final_role = chunk.role
-                    
+
                     yield chunk
-                
+
                 if not disabled:
                     span.span_data.output_msg = {
                         "role": final_role,
                         "content": full_content or None,
                         "reasoning_content": full_reasoning or None,
-                        "tool_calls": [
-                            {
-                                "fn_id": tc.fn_id,
-                                "fn_name": tc.fn_name,
-                                "fn_args": tc.fn_args,
-                            }
-                            for tc in all_tool_calls
-                        ] if all_tool_calls else None,
+                        "tool_calls": (
+                            [
+                                {
+                                    "fn_id": tc.fn_id,
+                                    "fn_name": tc.fn_name,
+                                    "fn_args": tc.fn_args,
+                                }
+                                for tc in all_tool_calls
+                            ]
+                            if all_tool_calls
+                            else None
+                        ),
                     }
                     if final_usage:
                         span.span_data.usage = {
@@ -932,10 +922,15 @@ class Chater:
                         }
             except Exception as e:
                 if not disabled:
-                    span.set_error(SpanError(
-                        message=f"Model generation stream failed: {str(e)}",
-                        data={"model": kwargs_inner.get("model"), "error_type": type(e).__name__}
-                    ))
+                    span.set_error(
+                        SpanError(
+                            message=f"Model generation stream failed: {str(e)}",
+                            data={
+                                "model": kwargs_inner.get("model"),
+                                "error_type": type(e).__name__,
+                            },
+                        )
+                    )
                 raise
 
 
@@ -966,9 +961,7 @@ class Embedder:
 
         retry_decorator = retry(
             stop=stop_after_attempt(self.max_retries),
-            wait=wait_exponential(
-                multiplier=1, min=self.retry_min_wait, max=self.retry_max_wait
-            ),
+            wait=wait_exponential(multiplier=1, min=self.retry_min_wait, max=self.retry_max_wait),
             retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
             reraise=True,
         )
@@ -1001,8 +994,7 @@ class ChaterPool:
         circuit_breaker_threshold: int = 5,
     ):
         self.chaters = [
-            Chater(cfg, max_retries, retry_min_wait, retry_max_wait)
-            for cfg in chater_cfgs
+            Chater(cfg, max_retries, retry_min_wait, retry_max_wait) for cfg in chater_cfgs
         ]
         self.circuit_breaker_threshold = circuit_breaker_threshold
         self.failure_counts = [0] * len(self.chaters)
@@ -1034,9 +1026,7 @@ class ChaterPool:
                 continue
 
             try:
-                response = await chater.chat(
-                    messages, tools, tool_choice, stream, **kwargs
-                )
+                response = await chater.chat(messages, tools, tool_choice, stream, **kwargs)
                 self._record_success(idx)
                 return response
             except NON_RETRYABLE_EXCEPTIONS as e:
@@ -1056,16 +1046,12 @@ class ChaterPool:
             except (OpenAIError, APIStatusError) as e:
                 last_error = e
                 self._record_failure(idx)
-                self.logger.warning(
-                    f"Chater {idx} OpenAI error: {type(e).__name__}, switching"
-                )
+                self.logger.warning(f"Chater {idx} OpenAI error: {type(e).__name__}, switching")
                 continue
             except Exception as e:
                 last_error = e
                 self._record_failure(idx)
-                self.logger.warning(
-                    f"Chater {idx} unexpected error: {type(e).__name__}, switching"
-                )
+                self.logger.warning(f"Chater {idx} unexpected error: {type(e).__name__}, switching")
                 continue
 
         raise ModelError(f"All chaters failed. Last error: {last_error}")
@@ -1114,9 +1100,7 @@ class EmbedderPool:
         last_error = None
         for idx, embedder in enumerate(self.embedders):
             if self._is_circuit_open(idx):
-                self.logger.warning(
-                    f"Circuit breaker open for embedder {idx}, skipping"
-                )
+                self.logger.warning(f"Circuit breaker open for embedder {idx}, skipping")
                 continue
 
             try:
@@ -1140,9 +1124,7 @@ class EmbedderPool:
             except (OpenAIError, APIStatusError) as e:
                 last_error = e
                 self._record_failure(idx)
-                self.logger.warning(
-                    f"Embedder {idx} OpenAI error: {type(e).__name__}, switching"
-                )
+                self.logger.warning(f"Embedder {idx} OpenAI error: {type(e).__name__}, switching")
                 continue
             except Exception as e:
                 last_error = e

@@ -1,7 +1,8 @@
 from ..core import PromptTemplate
 
 
-REACT_OPENAI_BASE = PromptTemplate("""You are an AI assistant that uses the ReAct (Reasoning and Acting) framework to solve problems.
+REACT_OPENAI_BASE = PromptTemplate(
+    """You are an AI assistant that uses the ReAct (Reasoning and Acting) framework to solve problems.
 
 For each step:
 1. Think about what you need to do
@@ -13,10 +14,12 @@ Important:
 - Respond in the SAME language as the user's input (English for English, Chinese for Chinese, etc.)
 - Use tools to gather information when needed
 - Explain your reasoning process clearly
-- Provide accurate and helpful answers""")
+- Provide accurate and helpful answers"""
+)
 
 
-CLASSIC_REACT_FORMAT = PromptTemplate("""You are an AI assistant using the ReAct framework. You MUST follow this exact format:
+CLASSIC_REACT_FORMAT = PromptTemplate(
+    """You are an AI assistant using the ReAct framework. You MUST follow this exact format:
 
 <Thought>
 Your reasoning about what to do next
@@ -39,10 +42,12 @@ I now have enough information to answer
 
 <FinalAnswer>
 Your complete answer here
-</FinalAnswer>""")
+</FinalAnswer>"""
+)
 
 
-CLASSIC_REACT_RULES = PromptTemplate("""
+CLASSIC_REACT_RULES = PromptTemplate(
+    """
 CRITICAL Rules:
 - Respond in the SAME language as the user's question
 - Use EXACT format with <tags>
@@ -52,36 +57,47 @@ CRITICAL Rules:
 - For time queries, ALWAYS use get_current_time tool
 - For calculations, ALWAYS use calculate tool
 - For searches, ALWAYS use search tools
-- Only provide <FinalAnswer> after using appropriate tools""")
+- Only provide <FinalAnswer> after using appropriate tools"""
+)
 
 
-CLASSIC_REACT_TOOLS = PromptTemplate("""
+CLASSIC_REACT_TOOLS = PromptTemplate(
+    """
 Available Tools:
-{tools}""")
+{tools}"""
+)
 
 
 CLASSIC_REACT_SYSTEM = CLASSIC_REACT_FORMAT + CLASSIC_REACT_RULES + CLASSIC_REACT_TOOLS
 
 
-REACT_ERROR_NO_TOOL = PromptTemplate("""<Observation>
+REACT_ERROR_NO_TOOL = PromptTemplate(
+    """<Observation>
 Error: You must use available tools before providing a final answer. Do not make up information.
-</Observation>""")
+</Observation>"""
+)
 
 
-REACT_ERROR_INVALID_FORMAT = PromptTemplate("""<Observation>
+REACT_ERROR_INVALID_FORMAT = PromptTemplate(
+    """<Observation>
 Error: Invalid format. You must provide <Action> and <ActionInput> tags. Follow the exact format specified.
-</Observation>""")
+</Observation>"""
+)
 
 
-REACT_OBSERVATION_WRAPPER = PromptTemplate("""<Observation>
+REACT_OBSERVATION_WRAPPER = PromptTemplate(
+    """<Observation>
 {output}
-</Observation>""")
+</Observation>"""
+)
 
 
-REACT_STEP_OUTPUT = PromptTemplate("""<Thought>{thought}</Thought>
+REACT_STEP_OUTPUT = PromptTemplate(
+    """<Thought>{thought}</Thought>
 <Action>{action}</Action>
 <ActionInput>{action_input}</ActionInput>
-<Observation>{observation}</Observation>""")
+<Observation>{observation}</Observation>"""
+)
 
 
 def build_classic_react_system_prompt(tools_description: str) -> str:
@@ -106,8 +122,5 @@ def get_observation_prompt(output: str) -> str:
 
 def get_step_output_prompt(thought: str, action: str, action_input: str, observation: str) -> str:
     return REACT_STEP_OUTPUT.format(
-        thought=thought,
-        action=action,
-        action_input=action_input,
-        observation=observation
+        thought=thought, action=action, action_input=action_input, observation=observation
     ).totext()
