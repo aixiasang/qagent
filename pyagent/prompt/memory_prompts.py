@@ -1,4 +1,4 @@
-from core import PromptTemplate
+from ..core import PromptTemplate
 
 
 AGENTIC_MEMORY_ANALYZE = PromptTemplate("""Generate a structured analysis of the following content by:

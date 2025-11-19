@@ -1,4 +1,4 @@
-from core import PromptTemplate
+from ..core import PromptTemplate
 
 
 REACT_OPENAI_BASE = PromptTemplate("""You are an AI assistant that uses the ReAct (Reasoning and Acting) framework to solve problems.

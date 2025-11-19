@@ -18,6 +18,7 @@ from typing import (
 )
 from dataclasses import dataclass
 from ._exceptions import ToolError, ToolNotFoundError, InvalidArgumentsError
+from ._trace import tool_span, custom_span, get_current_trace, SpanError
 
 
 def format_mcp_result(content: list) -> list:
@@ -201,42 +202,101 @@ class ToolKit:
         if name not in self._tools:
             raise ToolNotFoundError(tool_name=name)
 
+        current_trace = get_current_trace()
+        disabled = current_trace is None
+        
         func = self._tools[name]
 
-        try:
-            if asyncio.iscoroutinefunction(func):
-                result = await func(**kwargs)
-            else:
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None, lambda: func(**kwargs))
-            return result
-        except TypeError as e:
-            raise InvalidArgumentsError(
-                message=str(e), tool_name=name, provided_args=list(kwargs.keys())
-            )
-        except ToolError:
-            raise
-        except Exception as e:
-            raise ToolError(
-                message=str(e), tool_name=name, error_detail=type(e).__name__
-            )
+        with tool_span(
+            tool_name=name,
+            input_args=kwargs if not disabled else None,
+            disabled=disabled,
+        ) as span:
+            try:
+                if asyncio.iscoroutinefunction(func):
+                    result = await func(**kwargs)
+                else:
+                    loop = asyncio.get_event_loop()
+                    result = await loop.run_in_executor(None, lambda: func(**kwargs))
+                
+                if not disabled:
+                    span.span_data.output = result
+                
+                return result
+            except TypeError as e:
+                if not disabled:
+                    span.span_data.error = str(e)
+                    span.set_error(SpanError(
+                        message=f"Invalid arguments for tool {name}",
+                        data={"tool_name": name, "error_type": "TypeError"}
+                    ))
+                raise InvalidArgumentsError(
+                    message=str(e), tool_name=name, provided_args=list(kwargs.keys())
+                )
+            except ToolError:
+                if not disabled:
+                    span.span_data.error = "ToolError"
+                raise
+            except Exception as e:
+                if not disabled:
+                    span.span_data.error = str(e)
+                    span.set_error(SpanError(
+                        message=f"Tool execution failed: {name}",
+                        data={"tool_name": name, "error_type": type(e).__name__}
+                    ))
+                raise ToolError(
+                    message=str(e), tool_name=name, error_detail=type(e).__name__
+                )
 
     async def execute_many(self, calls: List[Dict]) -> List[Any]:
-        tasks = []
+        current_trace = get_current_trace()
+        disabled = current_trace is None
+        
+        tool_names = []
         for call in calls:
             name = call.get("name") or call.get("function", {}).get("name")
-            arguments = call.get("arguments") or call.get("function", {}).get(
-                "arguments", {}
-            )
+            if name:
+                tool_names.append(name)
+        
+        with custom_span(
+            name="batch_tool_execution",
+            data={
+                "tool_count": len(calls),
+                "tool_names": tool_names,
+            } if not disabled else None,
+            disabled=disabled,
+        ) as batch_span:
+            tasks = []
+            for call in calls:
+                name = call.get("name") or call.get("function", {}).get("name")
+                arguments = call.get("arguments") or call.get("function", {}).get(
+                    "arguments", {}
+                )
 
-            if isinstance(arguments, str):
-                import json
+                if isinstance(arguments, str):
+                    import json
 
-                arguments = json.loads(arguments)
+                    arguments = json.loads(arguments)
 
-            tasks.append(self.execute(name, **arguments))
+                tasks.append(self.execute(name, **arguments))
 
-        return await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                if not disabled:
+                    success_count = sum(1 for r in results if not isinstance(r, Exception))
+                    error_count = len(results) - success_count
+                    batch_span.span_data.data["success_count"] = success_count
+                    batch_span.span_data.data["error_count"] = error_count
+                
+                return results
+            except Exception as e:
+                if not disabled:
+                    batch_span.set_error(SpanError(
+                        message=f"Batch tool execution failed",
+                        data={"error_type": type(e).__name__}
+                    ))
+                raise
 
     def to_openai_tools(self) -> List[Dict]:
         tools = []

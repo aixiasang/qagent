@@ -4,6 +4,8 @@ if TYPE_CHECKING:
     from ._agent import Agent
     from ._model import ChatResponse
 
+from ._trace import custom_span, get_current_trace, get_current_span
+
 
 async def sequential_pipeline(
     agents: list[Union["Agent", Callable]],
@@ -11,7 +13,32 @@ async def sequential_pipeline(
 ) -> "ChatResponse":
     if len(agents) == 0:
         raise ValueError("No agents provided in pipeline")
+    
+    current_trace = get_current_trace()
+    
+    if current_trace:
+        current_span = get_current_span()
+        if not (current_span and hasattr(current_span.span_data, 'data') and 
+                current_span.span_data.data.get('pattern') == 'sequential'):
+            with custom_span(
+                name="sequential_pipeline",
+                data={
+                    "agent_count": len(agents),
+                    "agent_names": [a.name if hasattr(a, 'name') else 'callable' for a in agents],
+                    "pattern": "sequential"
+                }
+            ):
+                return await _execute_pipeline(agents, initial_message)
+        else:
+            return await _execute_pipeline(agents, initial_message)
+    else:
+        return await _execute_pipeline(agents, initial_message)
 
+
+async def _execute_pipeline(
+    agents: list[Union["Agent", Callable]],
+    initial_message: Optional["ChatResponse"] = None,
+) -> "ChatResponse":
     current_msg = initial_message
 
     for agent in agents:

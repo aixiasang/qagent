@@ -1,4 +1,4 @@
-from core import PromptTemplate
+from ..core import PromptTemplate
 
 
 PLAN_REACT_SYSTEM = PromptTemplate("""You are a planning agent using Plan-ReAct framework.

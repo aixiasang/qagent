@@ -3,8 +3,8 @@ import json
 import re
 from typing import Optional, Union, AsyncGenerator, Dict, List
 
-from core import Agent, BaseAgent, Memory, ChatResponse, Chater, ChaterPool, ToolCall, ToolKit, Speaker,with_reply_hooks,with_observe_hooks
-from prompt import (
+from ..core import Agent, BaseAgent, Memory, ChatResponse, Chater, ChaterPool, ToolCall, ToolKit, Speaker,with_reply_hooks,with_observe_hooks
+from ..prompt import (
     get_react_openai_prompt,
     build_classic_react_system_prompt,
     get_error_no_tool_prompt,

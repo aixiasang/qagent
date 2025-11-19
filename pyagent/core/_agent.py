@@ -17,6 +17,13 @@ from ._model import (
 )
 from ._tools import ToolKit
 from ._speaker import Speaker, ConsoleSpeaker
+from ._trace import (
+    agent_span,
+    generation_span,
+    tool_span,
+    get_current_trace,
+    agent_step_span,
+)
 
 
 class _HookDecorator:
@@ -305,6 +312,18 @@ class Agent(BaseAgent):
     async def reply(
         self, user_message: str, stream: bool = False, auto_speak: bool = False
     ) -> Union[ChatResponse, AsyncGenerator[ChatResponse, None]]:
+        current_trace = get_current_trace()
+        
+        if current_trace is not None:
+            async for response in self._reply_with_trace(user_message, stream, auto_speak):
+                yield response
+        else:
+            async for response in self._reply_impl(user_message, stream, auto_speak):
+                yield response
+    
+    async def _reply_impl(
+        self, user_message: str, stream: bool = False, auto_speak: bool = False
+    ) -> AsyncGenerator[ChatResponse, None]:
         self.logger.info(f"Received message: {user_message[:50]}...")
 
         user_msg = ChatResponse(role="user", content=user_message)
@@ -312,9 +331,11 @@ class Agent(BaseAgent):
 
         tools = self.tools.to_openai_tools() if self.tools else None
         tool_choice = "auto" if self.tools else None
+        
         for iteration in range(self.max_iterations):
             self.logger.debug(f"Iteration {iteration + 1}/{self.max_iterations}")
             history = self._build_history()
+            
             if not stream:
                 response = await self.chater.chat(
                     messages=history, tools=tools, tool_choice=tool_choice, stream=False
@@ -338,6 +359,7 @@ class Agent(BaseAgent):
                 else:
                     self.logger.info("Reply completed")
                     response = self._run_post_reply_hooks(response, user_message)
+                    
                     yield response
                     
                     if auto_speak:
@@ -350,6 +372,7 @@ class Agent(BaseAgent):
                 response = ChatResponse()
                 last_msg = None
                 first_chunk = True
+                
                 async for msg in await self.chater.chat(
                     messages=history, stream=True, tools=tools, tool_choice=tool_choice
                 ):
@@ -366,10 +389,8 @@ class Agent(BaseAgent):
                         response.tool_calls = msg.tool_calls
 
                     last_msg = msg
-                    
                     if auto_speak:
                         if first_chunk and (msg.content or msg.reasoning_content):
-                            print("Agent: ", end="", flush=True)
                             first_chunk = False
                         self.speaker.speak_chunk(msg)
                     
@@ -407,11 +428,32 @@ class Agent(BaseAgent):
                     
                     self._broadcast_to_audience(final_response)
                     break
+    
+    async def _reply_with_trace(
+        self, user_message: str, stream: bool = False, auto_speak: bool = False
+    ) -> AsyncGenerator[ChatResponse, None]:
+        with agent_span(
+            agent_name=self.name,
+            agent_type=self.__class__.__name__,
+            tools=list(self.tools._tools.keys()) if self.tools else None,
+            user_input=user_message,
+            agent_id=self.agent_id,
+        ) as span:
+            final_content = None
+            
+            async for response in self._reply_impl(user_message, stream, auto_speak):
+                if hasattr(response, 'content') and response.content:
+                    final_content = response.content
+                yield response
+            
+            if final_content:
+                span.span_data.agent_output = final_content
 
     async def _execute_single_tool(self, tc: ToolCall) -> ChatResponse:
         from ._exceptions import ToolError
-
+        
         args_dict = tc.get_args_dict()
+        
         try:
             if self.tool_timeout:
                 output = await asyncio.wait_for(
@@ -420,6 +462,7 @@ class Agent(BaseAgent):
                 )
             else:
                 output = await self.tools.execute(name=tc.fn_name, **args_dict)
+                
         except asyncio.TimeoutError:
             output = f"Tool execution timeout after {self.tool_timeout}s"
         except ToolError as e:

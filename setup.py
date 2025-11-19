@@ -7,15 +7,16 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="mini-agent",
+    name="pyagent",
     version="0.1.0",
-    description="Lightweight agentic framework with ReAct, A-MEM memory system, and advanced reasoning",
+    description="Lightweight multi-agent framework with Trace, ReAct, A-MEM memory system",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="aixiasang",
     author_email="aixiasang@163.com",
-    url="https://github.com/aixiasang/mini-agent",
-    packages=["core", "agent", "prompt"],
+    url="https://github.com/aixiasang/pyagent",
+    packages=find_packages(where="."),
+    package_dir={"": "."},
     python_requires=">=3.8",
     install_requires=[
         "openai>=1.0.0",
@@ -36,7 +37,7 @@ setup(
             "pillow>=9.0.0",
         ],
     },
-    keywords=["agent", "ai", "llm", "react", "reasoning", "memory", "a-mem", "multi-agent"],
+    keywords=["agent", "ai", "llm", "trace", "react", "memory", "a-mem", "multi-agent", "async", "runner"],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -53,8 +54,8 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     project_urls={
-        "Source": "https://github.com/aixiasang/mini-agent",
-        "Bug Reports": "https://github.com/aixiasang/mini-agent/issues",
-        "Documentation": "https://github.com/aixiasang/mini-agent#readme",
+        "Source": "https://github.com/aixiasang/pyagent",
+        "Bug Reports": "https://github.com/aixiasang/pyagent/issues",
+        "Documentation": "https://github.com/aixiasang/pyagent#readme",
     },
 )

@@ -6,9 +6,9 @@ from typing import Optional, List, Dict, Any, Tuple, AsyncGenerator, Union
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
 import logging
-from core import Agent,Memory, ChatResponse, ChaterPool, EmbedderPool, Embedder,Chater,ToolKit,Speaker,ChromaVectorStore
+from ..core import Agent,Memory, ChatResponse, ChaterPool, EmbedderPool, Embedder,Chater,ToolKit,Speaker,ChromaVectorStore
 
-from prompt import (
+from ..prompt import (
     get_agentic_memory_analyze_prompt,
     get_agentic_memory_evolution_prompt,
 )

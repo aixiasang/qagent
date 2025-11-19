@@ -1,4 +1,4 @@
-from core import PromptTemplate
+from ..core import PromptTemplate
 
 
 ENHANCED_QUALITY_EVALUATOR = PromptTemplate("""You are a quality evaluator. Evaluate the following answer strictly.

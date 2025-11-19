@@ -1,9 +1,9 @@
 import re
 from typing import Optional, Union, AsyncGenerator, Dict, List
 
-from core import Agent, Memory, ChatResponse, Chater, ChaterPool, ToolKit, Speaker
+from ..core import Agent, Memory, ChatResponse, Chater, ChaterPool, ToolKit, Speaker
 
-from prompt import (
+from ..prompt import (
     build_plan_react_prompt,
     build_reflection_prompt,
     build_self_consistency_prompt,

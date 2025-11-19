@@ -35,7 +35,7 @@ data/
 *.mp4
 *.mp3
 *.wav
-*.png
+
 *.jpg
 *.jpeg
 *.pdf
@@ -49,11 +49,14 @@ data/
 .mypy_cache/
 .coverage
 
-/data/
 /cache/
 /agentic_memory_store/
 /ark/
 /live2d/
-/test_outputs/
-/tts/test_outputs/
-/tts/tts_cache/
+*openai-**/
+*agentscope-**/
+*cursor/
+
+pyagent/data/
+pyagent/tts/test_outputs/
+pyagent/tts/tts_cache/

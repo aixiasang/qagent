@@ -2,19 +2,14 @@ include README.md
 include LICENSE
 include pyproject.toml
 include setup.py
-include *.md
 
-recursive-include core *.py
-recursive-include agent *.py
-recursive-include prompt *.py
+recursive-include mini_agent/examples *.py
+recursive-include mini_agent/tests *.py
 
-recursive-exclude tests *
-recursive-exclude examples *
-recursive-exclude * __pycache__
-recursive-exclude * *.py[co]
-recursive-exclude * *.so
-recursive-exclude * *.dylib
-recursive-exclude * .DS_Store
-recursive-exclude * .git*
-recursive-exclude agentic_memory_store *
-recursive-exclude cache *
+exclude mini_agent/data/*
+exclude mini_agent/tts/test_outputs/*
+exclude mini_agent/tts/tts_cache/*
+
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store

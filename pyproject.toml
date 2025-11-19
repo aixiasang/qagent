@@ -3,9 +3,9 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mini-agent"
+name = "pyagent"
 version = "0.1.0"
-description = "Lightweight agentic framework with ReAct, A-MEM memory system, and advanced reasoning"
+description = "Lightweight multi-agent framework with Trace, ReAct, A-MEM memory system"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
@@ -19,15 +19,14 @@ keywords = [
     "agent",
     "ai",
     "llm",
+    "trace",
     "react",
-    "reasoning",
     "memory",
     "a-mem",
     "multi-agent",
-    "hook",
     "mcp",
-    "vector-store",
-    "embeddings"
+    "async",
+    "runner"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -66,14 +65,14 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aixiasang/mini-agent"
-Repository = "https://github.com/aixiasang/mini-agent"
-Documentation = "https://github.com/aixiasang/mini-agent#readme"
-"Bug Reports" = "https://github.com/aixiasang/mini-agent/issues"
-"Source Code" = "https://github.com/aixiasang/mini-agent"
+Homepage = "https://github.com/aixiasang/pyagent"
+Repository = "https://github.com/aixiasang/pyagent"
+Documentation = "https://github.com/aixiasang/pyagent#readme"
+"Bug Reports" = "https://github.com/aixiasang/pyagent/issues"
+"Source Code" = "https://github.com/aixiasang/pyagent"
 
 [tool.setuptools]
-packages = ["core", "agent", "prompt"]
+packages = ["pyagent", "pyagent.core", "pyagent.agent", "pyagent.prompt", "pyagent.tts"]
 
 [tool.black]
 line-length = 100

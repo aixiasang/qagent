@@ -40,6 +40,7 @@ from openai import (
     ContentFilterFinishReasonError,
 )
 from ._exceptions import ModelError
+from ._trace import generation_span, get_current_trace, SpanError
 
 RETRYABLE_EXCEPTIONS = (
     RateLimitError,
@@ -674,6 +675,9 @@ class Chater:
         stream: bool = False,
         **kwargs,
     ):
+        current_trace = get_current_trace()
+        disabled = current_trace is None
+        
         retry_decorator = retry(
             stop=stop_after_attempt(self.max_retries),
             wait=wait_exponential(
@@ -683,20 +687,21 @@ class Chater:
             reraise=True,
         )
 
+        kwargs_inner = {
+            "messages": messages,
+            "stream": stream,
+            **self.chat_cfg.to_dict(),
+            **kwargs,
+        }
+        if (tools and not tool_choice) or (not tools and tool_choice):
+            raise ValueError("tools and tool_choice must be provided together")
+        if tools:
+            kwargs_inner["tools"] = tools
+        if tool_choice:
+            kwargs_inner["tool_choice"] = tool_choice
+
         @retry_decorator
         async def _do_chat():
-            kwargs_inner = {
-                "messages": messages,
-                "stream": stream,
-                **self.chat_cfg.to_dict(),
-                **kwargs,
-            }
-            if (tools and not tool_choice) or (not tools and tool_choice):
-                raise ValueError("tools and tool_choice must be provided together")
-            if tools:
-                kwargs_inner["tools"] = tools
-            if tool_choice:
-                kwargs_inner["tool_choice"] = tool_choice
             start_time = datetime.now()
             response = await self.client.chat.completions.create(**kwargs_inner)
             return (
@@ -711,7 +716,48 @@ class Chater:
                 )
             )
 
-        return await _do_chat()
+        if stream:
+            return self._stream_with_trace(
+                await _do_chat(), messages, kwargs_inner, disabled
+            )
+        else:
+            params = {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]} if not disabled else None
+            
+            with generation_span(
+                model=kwargs_inner.get("model"),
+                input_msgs=messages if not disabled else None,
+                params=params,
+                disabled=disabled,
+            ) as span:
+                try:
+                    result = await _do_chat()
+                    if not disabled:
+                        span.span_data.output_msg = {
+                            "role": result.role,
+                            "content": result.content,
+                            "reasoning_content": result.reasoning_content,
+                            "tool_calls": [
+                                {
+                                    "fn_id": tc.fn_id,
+                                    "fn_name": tc.fn_name,
+                                    "fn_args": tc.fn_args,
+                                }
+                                for tc in result.tool_calls
+                            ] if result.tool_calls else None,
+                        }
+                        span.span_data.usage = {
+                            "input_tokens": result.usage.input_tokens,
+                            "output_tokens": result.usage.output_tokens,
+                            "time": result.usage.time,
+                        }
+                    return result
+                except Exception as e:
+                    if not disabled:
+                        span.set_error(SpanError(
+                            message=f"Model generation failed: {str(e)}",
+                            data={"model": kwargs_inner.get("model"), "error_type": type(e).__name__}
+                        ))
+                    raise
 
     def _no_stream(
         self,
@@ -827,6 +873,70 @@ class Chater:
                     tool_call=tool_calls[tool_idx],
                     usage=usage,
                 )
+    
+    async def _stream_with_trace(
+        self,
+        stream_generator: AsyncGenerator[ChatResponse, None],
+        messages: list[dict],
+        kwargs_inner: dict,
+        disabled: bool,
+    ) -> AsyncGenerator[ChatResponse, None]:
+        params = {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]} if not disabled else None
+        
+        with generation_span(
+            model=kwargs_inner.get("model"),
+            input_msgs=messages if not disabled else None,
+            params=params,
+            disabled=disabled,
+        ) as span:
+            full_content = ""
+            full_reasoning = ""
+            all_tool_calls = []
+            final_usage = None
+            final_role = "assistant"
+            
+            try:
+                async for chunk in stream_generator:
+                    if chunk.content:
+                        full_content += chunk.content
+                    if chunk.reasoning_content:
+                        full_reasoning += chunk.reasoning_content
+                    if chunk.tool_call:
+                        all_tool_calls.append(chunk.tool_call)
+                    if chunk.usage:
+                        final_usage = chunk.usage
+                    if chunk.role:
+                        final_role = chunk.role
+                    
+                    yield chunk
+                
+                if not disabled:
+                    span.span_data.output_msg = {
+                        "role": final_role,
+                        "content": full_content or None,
+                        "reasoning_content": full_reasoning or None,
+                        "tool_calls": [
+                            {
+                                "fn_id": tc.fn_id,
+                                "fn_name": tc.fn_name,
+                                "fn_args": tc.fn_args,
+                            }
+                            for tc in all_tool_calls
+                        ] if all_tool_calls else None,
+                    }
+                    if final_usage:
+                        span.span_data.usage = {
+                            "input_tokens": final_usage.input_tokens,
+                            "output_tokens": final_usage.output_tokens,
+                            "time": final_usage.time,
+                        }
+            except Exception as e:
+                if not disabled:
+                    span.set_error(SpanError(
+                        message=f"Model generation stream failed: {str(e)}",
+                        data={"model": kwargs_inner.get("model"), "error_type": type(e).__name__}
+                    ))
+                raise
 
 
 class Embedder:
