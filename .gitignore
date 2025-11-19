@@ -60,3 +60,6 @@ data/
 pyagent/data/
 pyagent/tts/test_outputs/
 pyagent/tts/tts_cache/
+
+pyagent/examples/
+pyagent/tests/
