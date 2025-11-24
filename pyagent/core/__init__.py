@@ -26,7 +26,7 @@ from ._model import (
     get_embedder_cfg,
 )
 from ._prompt import PromptTemplate
-from ._tools import ToolKit
+from ._tools import ToolKit, MCPServerConfig
 from ._chunk import Chunk, Sentence, Document, BaseTokenizer
 from ._vb import VectorStore, JsonVectorStore, ChromaVectorStore
 from ._utils import (
@@ -109,6 +109,7 @@ __all__ = [
     "Runner",
     "PromptTemplate",
     "ToolKit",
+    "MCPServerConfig",
     "Chunk",
     "Sentence",
     "Document",
