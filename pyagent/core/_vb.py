@@ -440,17 +440,19 @@ class VectorDB:
             raise ValueError(f"Unknown store_type: {store_type}")
 
         self._loaded = False
+        self._load_existing = load_existing
 
-        if load_existing and Path(store_path).exists():
+    async def _ensure_loaded(self):
+        if not self._loaded and self._load_existing and Path(self.store_path).exists():
             try:
-                asyncio.create_task(self._async_load())
-            except:
-                pass
-
-    async def _async_load(self):
-        if not self._loaded:
-            await self.store.load()
-            self._loaded = True
+                await self.store.load()
+                self._loaded = True
+            except FileNotFoundError:
+                self._loaded = True
+            except Exception as e:
+                import logging
+                logging.warning(f"VectorDB load failed: {e}")
+                self._loaded = True
 
     async def add(
         self,
@@ -477,6 +479,7 @@ class VectorDB:
         await self.store.add(ids, texts, embeddings, metadatas)
 
     async def search(self, query: str, k: int = 5) -> List[SearchResult]:
+        await self._ensure_loaded()
         embed_response = await self.embedder.embed([query])
         query_embedding = embed_response.embedding[0]
 
@@ -486,6 +489,7 @@ class VectorDB:
     async def search_with_embedding(
         self, query_embedding: np.ndarray, k: int = 5
     ) -> List[SearchResult]:
+        await self._ensure_loaded()
         results = await self.store.search(query_embedding, k)
         return results
 
@@ -493,9 +497,11 @@ class VectorDB:
         await self.store.delete(ids)
 
     async def get(self, ids: List[str]) -> List[Dict[str, Any]]:
+        await self._ensure_loaded()
         return await self.store.get(ids)
 
     async def count(self) -> int:
+        await self._ensure_loaded()
         return await self.store.count()
 
     async def save(self):

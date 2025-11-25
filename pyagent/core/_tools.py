@@ -140,22 +140,30 @@ class MCPClient:
         if not self._connected:
             return
 
-        try:
-            if self.session:
-                try:
-                    await self.session.__aexit__(None, None, None)
-                except:
-                    pass
+        errors = []
 
-            if self._context:
-                try:
-                    await self._context.__aexit__(None, None, None)
-                except:
-                    pass
-        except:
-            pass
-        finally:
-            self._connected = False
+        if self.session:
+            try:
+                await self.session.__aexit__(None, None, None)
+            except Exception as e:
+                errors.append(f"Session close error: {type(e).__name__}: {e}")
+            finally:
+                self.session = None
+
+        if self._context:
+            try:
+                await self._context.__aexit__(None, None, None)
+            except Exception as e:
+                errors.append(f"Context close error: {type(e).__name__}: {e}")
+            finally:
+                self._context = None
+
+        self.tools_cache.clear()
+        self._connected = False
+
+        if errors:
+            import logging
+            logging.warning(f"MCP disconnect warnings for {self.config.name}: {'; '.join(errors)}")
 
     async def list_tools(self) -> List[Dict]:
         result = await self.session.list_tools()

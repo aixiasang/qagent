@@ -63,7 +63,7 @@ NON_RETRYABLE_EXCEPTIONS = [
     ContentFilterFinishReasonError,
 ]
 
-NON_RETRYABLE_EXCEPTIONS = tuple[Any, ...](NON_RETRYABLE_EXCEPTIONS)
+NON_RETRYABLE_EXCEPTIONS = tuple(NON_RETRYABLE_EXCEPTIONS)
 
 
 @dataclass
@@ -545,9 +545,10 @@ class FileCache:
 
 
 class Memory:
-    def __init__(self, max_messages: Optional[int] = None):
+    def __init__(self, max_messages: Optional[int] = None, filepath: Optional[str] = None):
         self.messages: list[ChatResponse] = []
         self.max_messages = max_messages
+        self.filepath = filepath
 
     def add(self, message: ChatResponse | list[ChatResponse]) -> None:
         if isinstance(message, list):
@@ -632,6 +633,37 @@ class Memory:
 
     def __iter__(self):
         return iter(self.messages)
+
+    async def save(self, filepath: Optional[str] = None) -> None:
+        save_path = filepath or self.filepath
+        if not save_path:
+            raise ValueError("No filepath specified for save operation")
+
+        def _sync_save():
+            with open(save_path, "w", encoding="utf-8") as f:
+                json.dump([m.to_dict() for m in self.messages], f, ensure_ascii=False, indent=2)
+
+        await asyncio.to_thread(_sync_save)
+
+    async def load(self, filepath: Optional[str] = None, overwrite: bool = True) -> None:
+        load_path = filepath or self.filepath
+        if not load_path:
+            raise ValueError("No filepath specified for load operation")
+
+        if not os.path.exists(load_path):
+            return
+
+        def _sync_load():
+            with open(load_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+        data = await asyncio.to_thread(_sync_load)
+
+        if overwrite:
+            self.messages.clear()
+
+        for item in data:
+            self.messages.append(ChatResponse.from_dict(item))
 
 
 class Chater:

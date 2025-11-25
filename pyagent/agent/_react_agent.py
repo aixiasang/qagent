@@ -277,7 +277,7 @@ class ClassicReActAgent(BaseAgent):
 
         self.system_prompt = system_prompt or self._build_system_prompt_from_template()
 
-        from core._utils import AgentLogger
+        from ..core._utils import AgentLogger
 
         self.logger = AgentLogger(
             name=f"ClassicReActAgent.{name}",
