@@ -16,7 +16,7 @@ _Lightweight Multi-Agent Framework for Python_
 
 ## ✨ Features
 
-- 🎯 **Minimalist** - Clean design, only 13 core modules
+- 🎯 **Minimalist** - Clean design, only 12 core modules
 - 📊 **Stack-based Trace** - Auto-track multi-agent interactions
 - ⚡ **Async-first** - Full async I/O, concurrent tool execution
 - 🔄 **Auto-failover** - ChaterPool switches models automatically
@@ -24,7 +24,7 @@ _Lightweight Multi-Agent Framework for Python_
 - 🤖 **ReAct** - Complete reasoning-action loop
 - 🛠️ **MCP** - Native Model Context Protocol support
 - 🌐 **Multi-agent** - MsgHub broadcast, Pipeline orchestration
-- 🔀 **Workflow** - LangGraph-style StateGraph with conditional routing
+- 🔀 **Flow** - Lightweight workflow with loops, branches, parallel execution
 
 ## 🚀 Quick Start
 
@@ -64,30 +64,19 @@ async def main():
 asyncio.run(main())
 ```
 
-### StateGraph Workflow
+### Flow Workflow
 
 ```python
-from pyagent import StateGraph, START, END, Channel, AppendReducer
+from pyagent import Flow, END, Agent, Chater, Memory, get_chater_cfg
 
-graph = StateGraph()
-graph._channels = {"messages": Channel(default=[], reducer=AppendReducer())}
+writer = Agent(name="Writer", chater=Chater(get_chater_cfg("ali")), memory=Memory())
+reviewer = Agent(name="Reviewer", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 
-def step1(state):
-    return {"value": state.get("input", 0) + 10}
+flow = Flow("write_review").add("write", writer).add("review", reviewer).max_loops(3)
+flow.route("write").to("review")
+flow.route("review").when(lambda r: "APPROVED" in r.content).to(END).default().to("write")
 
-def step2(state):
-    return {"output": f"Result: {state['value'] * 2}"}
-
-def router(state):
-    return END if state["value"] > 20 else "step2"
-
-graph.add_node("step1", step1)
-graph.add_node("step2", step2)
-graph.add_edge(START, "step1")
-graph.add_conditional_edges("step1", router, {"step2": "step2"})
-graph.add_edge("step2", END)
-
-result = graph.compile().invoke({"input": 5})
+result = await flow.reply("Write a haiku about coding")
 ```
 
 ## 📐 Architecture
@@ -134,7 +123,7 @@ graph TB
     subgraph Orchestration["Orchestration Layer"]
         MsgHub[MsgHub]
         Pipeline[Pipeline]
-        Workflow[StateGraph]
+        FlowSystem[Flow]
     end
 
     ReActAgent --> Agent
@@ -152,13 +141,13 @@ graph TB
 
     MsgHub -.-> Agent
     Pipeline -.-> Agent
-    Workflow -.-> Agent
+    FlowSystem -.-> Agent
 
     style Trace fill:#e1f5ff
     style Runner fill:#fff4e6
     style ChaterPool fill:#99ccff
     style MsgHub fill:#99ff99
-    style Workflow fill:#ffccff
+    style FlowSystem fill:#ffccff
 ```
 
 **Features:**
@@ -169,55 +158,51 @@ graph TB
 - ✅ Minimal data - Agent span: type/agent_id/input/output only
 - ✅ Complete tracking - Generation/Tool/Custom spans
 
-## 🎯 Components
+## 🔀 Flow System
 
-| Component              | Description                                                                       |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| **Agent**              | Base agent with hooks, streaming, tool calling                                    |
-| **Runner**             | Unified interface for single/multi-agent execution                                |
-| **ChaterPool**         | Auto-failover when primary model fails                                            |
-| **ToolKit**            | Register Python functions or MCP tools                                            |
-| **MsgHub**             | Multi-agent broadcast communication                                               |
-| **Pipeline**           | Sequential/Parallel/Conditional/Loop patterns                                     |
-| **StateGraph**         | LangGraph-style workflow with state, nodes, edges, conditional routing            |
-| **WorkflowBuilder**    | Fluent API for building workflows with agents                                     |
-| **AgenticMemoryAgent** | A-MEM self-evolving memory ([arXiv:2502.12110](https://arxiv.org/abs/2502.12110)) |
-
-## 🔀 Workflow System
-
-StateGraph provides LangGraph-compatible workflow orchestration:
+Lightweight workflow with Agent-native interface:
 
 ```python
-from pyagent import StateGraph, WorkflowBuilder, START, END, Agent, Chater, Memory, get_chater_cfg
+from pyagent import Flow, END, Agent, Chater, Memory, get_chater_cfg
 
 planner = Agent(name="Planner", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 executor = Agent(name="Executor", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 reviewer = Agent(name="Reviewer", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 
-wf = (
-    WorkflowBuilder("plan_execute_review")
-    .add_agent("plan", planner)
-    .add_agent("execute", executor)
-    .add_agent("review", reviewer)
-    .add_branch("review", lambda s: END if "APPROVED" in s.get("output", "") else "plan", {})
-    .chain("plan", "execute", "review")
-    .set_entry("plan")
-    .build()
-)
+flow = Flow("plan_execute_review")
+flow.add("plan", planner)
+flow.add("execute", executor)
+flow.add("review", reviewer)
 
-result = await wf.ainvoke({"input": "Build a web app"})
+flow.route("plan").to("execute")
+flow.route("execute").to("review")
+flow.route("review").when(lambda r: "APPROVED" in r.content).to(END).default().to("plan")
+
+result = await flow.reply("Build a web app")  
 ```
 
-**Workflow Features:**
+### Loop Pattern
 
-| Feature                | Description                                           |
-| ---------------------- | ----------------------------------------------------- |
-| **StateGraph**         | Define nodes, edges, conditional routing              |
-| **Reducers**           | AppendReducer, MergeReducer, AddReducer for state     |
-| **Channels**           | Typed state fields with custom merge strategies       |
-| **Streaming**          | `astream()` for real-time node execution              |
-| **WorkflowBuilder**    | Fluent API: `add_agent()`, `chain()`, `add_branch()`  |
-| **Factory Functions**  | `create_react_graph()`, `create_sequential_graph()`   |
+```python
+flow = Flow("review_loop").add("write", writer).add("review", reviewer).max_loops(5)
+flow.route("write").to("review")
+flow.route("review").when(lambda r: "APPROVED" in r.content).to(END).default().to("write")
+```
+
+### Parallel Execution
+
+```python
+flow = Flow("parallel").parallel("experts", [tech, biz, legal]).add("summarize", summarizer)
+flow.route("experts").to("summarize")
+```
+
+### Chain Helper
+
+```python
+from pyagent import chain
+flow = chain(agent_a, agent_b, agent_c)
+result = await flow.reply("Start")
+```
 
 ## 🙏 Acknowledgments
 
@@ -225,7 +210,6 @@ Inspired by:
 
 - **[OpenAI Agents SDK](https://github.com/openai/openai-agents-python)** - Trace system, Runner pattern
 - **[AgentScope](https://github.com/modelscope/agentscope)** - Hook decorators, MsgHub
-- **[LangGraph](https://github.com/langchain-ai/langgraph)** - StateGraph, Reducers, Workflow patterns
 
 ## 📄 License
 
