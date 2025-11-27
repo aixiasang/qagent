@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner
+from qagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner
 
 
 async def main():

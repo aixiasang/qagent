@@ -1,5 +1,5 @@
 import pytest
-from pyagent import trace, export_traces, get_current_trace, custom_span, agent_span
+from qagent import trace, export_traces, get_current_trace, custom_span, agent_span
 
 def test_trace_creation():
     with trace("test_trace") as t:
@@ -9,7 +9,7 @@ def test_trace_creation():
         assert current.trace_id == t.trace_id
 
 def test_trace_disabled():
-    from pyagent import disable_tracing, enable_tracing
+    from qagent import disable_tracing, enable_tracing
     
     disable_tracing()
     with trace("disabled") as t:

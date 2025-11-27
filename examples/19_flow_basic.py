@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pyagent import Flow, END, chain, Agent, Chater, Memory, get_chater_cfg
+from qagent import Flow, END, chain, Agent, Chater, Memory, get_chater_cfg
 
 
 async def test_simple_chain():

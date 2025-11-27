@@ -1,5 +1,5 @@
 import pytest
-from pyagent import ReActAgent, Memory, ToolKit, ChatResponse
+from qagent import ReActAgent, Memory, ToolKit, ChatResponse
 
 
 async def sample_tool(x: int) -> int:

@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from pyagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner
+from qagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner
 
 async def get_current_time() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")

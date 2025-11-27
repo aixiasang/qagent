@@ -1,5 +1,5 @@
 import pytest
-from pyagent import (
+from qagent import (
     Agent, Memory, ChatResponse,
     sequential_pipeline, parallel_pipeline,
     conditional_pipeline, loop_pipeline

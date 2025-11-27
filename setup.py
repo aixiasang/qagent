@@ -7,14 +7,14 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="pyagent",
+    name="qagent",
     version="0.1.0",
     description="Lightweight multi-agent framework with Trace, ReAct, A-MEM memory system",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="aixiasang",
     author_email="aixiasang@163.com",
-    url="https://github.com/aixiasang/pyagent",
+    url="https://github.com/aixiasang/qagent",
     packages=find_packages(where="."),
     package_dir={"": "."},
     python_requires=">=3.8",
@@ -65,8 +65,8 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     project_urls={
-        "Source": "https://github.com/aixiasang/pyagent",
-        "Bug Reports": "https://github.com/aixiasang/pyagent/issues",
-        "Documentation": "https://github.com/aixiasang/pyagent#readme",
+        "Source": "https://github.com/aixiasang/qagent",
+        "Bug Reports": "https://github.com/aixiasang/qagent/issues",
+        "Documentation": "https://github.com/aixiasang/qagent#readme",
     },
 )

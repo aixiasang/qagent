@@ -57,9 +57,9 @@ data/
 *agentscope-**/
 *cursor/
 
-pyagent/data/
-pyagent/tts/test_outputs/
-pyagent/tts/tts_cache/
+qagent/data/
+qagent/tts/test_outputs/
+qagent/tts/tts_cache/
 
-pyagent/examples/
-pyagent/tests/
+qagent/examples/
+qagent/tests/

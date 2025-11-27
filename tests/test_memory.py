@@ -1,5 +1,5 @@
 import pytest
-from pyagent import Memory, ChatResponse
+from qagent import Memory, ChatResponse
 
 @pytest.fixture
 def memory():

@@ -3,12 +3,12 @@ include LICENSE
 include pyproject.toml
 include setup.py
 
-recursive-include mini_agent/examples *.py
-recursive-include mini_agent/tests *.py
+recursive-include examples *.py
+recursive-include tests *.py
 
-exclude mini_agent/data/*
-exclude mini_agent/tts/test_outputs/*
-exclude mini_agent/tts/tts_cache/*
+exclude qagent/data/*
+exclude qagent/tts/test_outputs/*
+exclude qagent/tts/tts_cache/*
 
 global-exclude __pycache__
 global-exclude *.py[cod]

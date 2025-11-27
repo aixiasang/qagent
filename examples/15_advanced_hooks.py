@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, Chater, get_chater_cfg, Runner, BaseAgent
+from qagent import Agent, Memory, Chater, get_chater_cfg, Runner, BaseAgent
 
 @BaseAgent.pre_reply
 def global_pre_reply(agent, msg):

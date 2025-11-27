@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, Chater, get_chater_cfg, Runner
+from qagent import Agent, Memory, Chater, get_chater_cfg, Runner
 
 async def main():
     planner = Agent(

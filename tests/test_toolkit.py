@@ -1,5 +1,5 @@
 import pytest
-from pyagent import ToolKit
+from qagent import ToolKit
 
 async def sample_tool(x: int, y: int) -> int:
     return x + y

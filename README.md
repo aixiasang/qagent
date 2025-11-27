@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="asserts/logo.png" alt="PyAgent Logo" width="200"/>
+<img src="asserts/logo.png" alt="QAgent Logo" width="200"/>
 
-# PyAgent
+# QAgent
 
 _Lightweight Multi-Agent Framework for Python_
 
@@ -30,7 +30,7 @@ _Lightweight Multi-Agent Framework for Python_
 
 ```python
 import asyncio
-from pyagent import Agent, Memory, Chater, Runner, get_chater_cfg
+from qagent import Agent, Memory, Chater, Runner, get_chater_cfg
 
 agent = Agent(
     name="Assistant",
@@ -49,7 +49,7 @@ asyncio.run(main())
 ### Multi-Agent with Trace
 
 ```python
-from pyagent import trace, Runner, Agent, Chater, Memory, get_chater_cfg
+from qagent import trace, Runner, Agent, Chater, Memory, get_chater_cfg
 
 planner = Agent(name="Planner", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 executor = Agent(name="Executor", chater=Chater(get_chater_cfg("ali")), memory=Memory())
@@ -67,7 +67,7 @@ asyncio.run(main())
 ### Flow Workflow
 
 ```python
-from pyagent import Flow, END, Agent, Chater, Memory, get_chater_cfg
+from qagent import Flow, END, Agent, Chater, Memory, get_chater_cfg
 
 writer = Agent(name="Writer", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 reviewer = Agent(name="Reviewer", chater=Chater(get_chater_cfg("ali")), memory=Memory())
@@ -163,7 +163,7 @@ graph TB
 Lightweight workflow with Agent-native interface:
 
 ```python
-from pyagent import Flow, END, Agent, Chater, Memory, get_chater_cfg
+from qagent import Flow, END, Agent, Chater, Memory, get_chater_cfg
 
 planner = Agent(name="Planner", chater=Chater(get_chater_cfg("ali")), memory=Memory())
 executor = Agent(name="Executor", chater=Chater(get_chater_cfg("ali")), memory=Memory())
@@ -199,7 +199,7 @@ flow.route("experts").to("summarize")
 ### Chain Helper
 
 ```python
-from pyagent import chain
+from qagent import chain
 flow = chain(agent_a, agent_b, agent_c)
 result = await flow.reply("Start")
 ```

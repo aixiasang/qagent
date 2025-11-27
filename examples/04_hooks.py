@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, Chater, get_chater_cfg, Runner
+from qagent import Agent, Memory, Chater, get_chater_cfg, Runner
 
 async def main():
     agent = Agent(
@@ -17,7 +17,7 @@ async def main():
     @agent.post_reply
     def format_output(response):
         if response.content and not response.tool_call:
-            response.content = f"âœ¨ {response.content} âœ¨"
+            response.content = f"âœ?{response.content} âœ?
         return response
     
     @agent.pre_observe

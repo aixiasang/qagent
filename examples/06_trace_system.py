@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner, trace, export_traces
+from qagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner, trace, export_traces
 
 async def multiply(a: float, b: float) -> float:
     return a * b

@@ -1,5 +1,5 @@
 import pytest
-from pyagent import Agent, Memory, ChatResponse
+from qagent import Agent, Memory, ChatResponse
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import ReActAgent, Memory, Chater, get_chater_cfg, ToolKit, Runner
+from qagent import ReActAgent, Memory, Chater, get_chater_cfg, ToolKit, Runner
 
 async def search_database(query: str) -> str:
     database = {

@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, Chater, get_chater_cfg, Runner, Speaker, ChatResponse
+from qagent import Agent, Memory, Chater, get_chater_cfg, Runner, Speaker, ChatResponse
 
 class CustomSpeaker(Speaker):
     def speak_complete(self, response: ChatResponse, agent_name: str):

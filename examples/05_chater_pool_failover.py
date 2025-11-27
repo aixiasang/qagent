@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import Agent, Memory, ChaterPool, get_chater_cfg, Runner
+from qagent import Agent, Memory, ChaterPool, get_chater_cfg, Runner
 
 async def main():
     chater_pool = ChaterPool([

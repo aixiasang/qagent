@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from pyagent import ChatResponse, ToolCall
+from qagent import ChatResponse, ToolCall
 
 
 class MockChater:

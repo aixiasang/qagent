@@ -1,5 +1,5 @@
 import asyncio
-from pyagent import (
+from qagent import (
     Agent, Memory, Chater, get_chater_cfg, ChatResponse,
     sequential_pipeline, parallel_pipeline, 
     conditional_pipeline, loop_pipeline
