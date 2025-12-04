@@ -1,12 +1,14 @@
 import asyncio
 from qagent import Agent, Memory, Chater, get_chater_cfg, Runner, BaseAgent
 
-@BaseAgent.pre_reply
+
+@BaseAgent.class_pre_reply
 def global_pre_reply(agent, msg):
     print(f"[GLOBAL PRE-REPLY] Agent {agent.name} received: {msg[:30]}")
     return msg
 
-@BaseAgent.post_reply
+
+@BaseAgent.class_post_reply
 def global_post_reply(agent, response):
     print(f"[GLOBAL POST-REPLY] Agent {agent.name} replied")
     return response

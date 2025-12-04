@@ -17,7 +17,7 @@ async def main():
     @agent.post_reply
     def format_output(response):
         if response.content and not response.tool_call:
-            response.content = f"âœ?{response.content} âœ?
+            response.content = f">> {response.content} <<"
         return response
     
     @agent.pre_observe

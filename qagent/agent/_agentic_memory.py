@@ -2,7 +2,7 @@ import json
 import re
 import uuid
 import numpy as np
-from typing import Optional, List, Dict, Any, Tuple, AsyncGenerator, Union
+from typing import Optional, List, Dict, Any, Tuple, Union
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
 import logging
@@ -15,16 +15,60 @@ from ..core import (
     Embedder,
     Chater,
     ToolKit,
-    Speaker,
     ChromaVectorStore,
 )
 
-from ..prompt import (
-    get_agentic_memory_analyze_prompt,
-    get_agentic_memory_evolution_prompt,
-)
-
 logger = logging.getLogger(__name__)
+
+MEMORY_ANALYZE_PROMPT = """Analyze the following content and extract structured information.
+Return a JSON object with:
+- keywords: List of key terms (max 5)
+- context: Category or domain (e.g., "Technical", "Personal", "Work")
+- tags: List of relevant tags (max 3)
+
+Content: {content}
+
+Respond ONLY with a valid JSON object."""
+
+MEMORY_EVOLUTION_PROMPT = """Analyze whether the new memory should connect to existing memories.
+
+New Memory:
+- Content: {content}
+- Context: {context}
+- Keywords: {keywords}
+
+Existing Neighbors ({neighbor_number} memories):
+{nearest_neighbors}
+
+Return a JSON object with:
+- should_evolve: boolean (should this memory connect to others?)
+- actions: list of actions (e.g., ["link", "merge", "update"])
+- suggested_connections: list of memory indices to connect
+- tags_to_update: list of new tags
+- new_context_neighborhood: list of context updates for neighbors
+- new_tags_neighborhood: list of tag updates for neighbors
+
+Respond ONLY with a valid JSON object."""
+
+
+def get_agentic_memory_analyze_prompt(content: str) -> str:
+    return MEMORY_ANALYZE_PROMPT.format(content=content)
+
+
+def get_agentic_memory_evolution_prompt(
+    content: str,
+    context: str,
+    keywords: list,
+    nearest_neighbors: str,
+    neighbor_number: int,
+) -> str:
+    return MEMORY_EVOLUTION_PROMPT.format(
+        content=content,
+        context=context,
+        keywords=keywords,
+        nearest_neighbors=nearest_neighbors,
+        neighbor_number=neighbor_number,
+    )
 
 
 @dataclass
@@ -48,34 +92,26 @@ class AgenticMemoryNote:
 class AgenticMemoryAgent(Agent):
     def __init__(
         self,
-        name: str,
         chater: Union[Chater, ChaterPool],
         embedder: Union[Embedder, EmbedderPool],
-        memory: Memory,
+        name: Optional[str] = None,
+        memory: Optional[Memory] = None,
         tools: Optional[ToolKit] = None,
         system_prompt: Optional[str] = None,
         max_iterations: int = 5,
         tool_timeout: Optional[int] = None,
-        enable_logging: bool = False,
-        log_file: Optional[str] = None,
-        log_level: str = "INFO",
-        speaker: Optional[Speaker] = None,
         evo_threshold: int = 100,
         vector_store_path: str = "./agentic_memory_store",
         collection_name: str = "memories",
     ):
         super().__init__(
-            name=name,
             chater=chater,
+            name=name,
             memory=memory,
             tools=tools,
             system_prompt=system_prompt,
             max_iterations=max_iterations,
             tool_timeout=tool_timeout,
-            enable_logging=enable_logging,
-            log_file=log_file,
-            log_level=log_level,
-            speaker=speaker,
         )
 
         self.embedder = embedder
@@ -481,9 +517,9 @@ class AgenticMemoryAgent(Agent):
         user_message: str,
         k: int = 3,
         stream: bool = False,
-        auto_speak: bool = True,
-    ) -> AsyncGenerator[ChatResponse, None]:
-
+        on_stream=None,
+        on_complete=None,
+    ) -> ChatResponse:
         related_memories = await self.search_memory(user_message, k=k)
 
         if related_memories:
@@ -493,16 +529,11 @@ class AgenticMemoryAgent(Agent):
                 if mem["keywords"]:
                     memory_context += f" (keywords: {', '.join(mem['keywords'][:3])})"
                 memory_context += "\n"
-
             enhanced_message = user_message + memory_context
-
-            async for response in super().reply(
-                enhanced_message, stream=stream, auto_speak=auto_speak
-            ):
-                yield response
         else:
-            async for response in super().reply(user_message, stream=stream, auto_speak=auto_speak):
-                yield response
+            enhanced_message = user_message
+
+        return await self(enhanced_message, stream=stream, on_stream=on_stream, on_complete=on_complete)
 
     def get_all_memories(self) -> List[AgenticMemoryNote]:
         return list(self.agentic_memories.values())

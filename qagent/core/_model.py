@@ -12,6 +12,10 @@ from itertools import accumulate
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field
 from typing import Any, AsyncGenerator, Callable, Literal, Optional, Union
+
+
+StreamCallback = Callable[["ChatResponse"], None]
+CompleteCallback = Callable[["ChatResponse"], None]
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from tenacity import (
     retry,
@@ -40,7 +44,7 @@ from openai import (
     ContentFilterFinishReasonError,
 )
 from ._exceptions import ModelError
-from ._trace import generation_span, get_current_trace, SpanError
+from ._trace import generation_span, embedder_span, get_current_trace, SpanError
 
 RETRYABLE_EXCEPTIONS = (
     RateLimitError,
@@ -560,6 +564,9 @@ class Memory:
             overflow = len(self.messages) - self.max_messages
             self.messages = self.messages[overflow:]
 
+    def add_user(self, content: str) -> None:
+        self.add(ChatResponse(role="user", content=content))
+
     def get(
         self,
         n: Optional[int] = None,
@@ -673,12 +680,16 @@ class Chater:
         max_retries: int = 3,
         retry_min_wait: float = 1.0,
         retry_max_wait: float = 10.0,
+        on_stream: Optional[StreamCallback] = None,
+        on_complete: Optional[CompleteCallback] = None,
     ):
         self.client = AsyncOpenAI(**chater_cfg.client_cfg.to_dict())
         self.chat_cfg = chater_cfg.chat_cfg
         self.max_retries = max_retries
         self.retry_min_wait = retry_min_wait
         self.retry_max_wait = retry_max_wait
+        self.on_stream = on_stream
+        self.on_complete = on_complete
 
     async def chat(
         self,
@@ -686,10 +697,15 @@ class Chater:
         tools: list[dict] | None = None,
         tool_choice: str | None = None,
         stream: bool = False,
+        on_stream: Optional[StreamCallback] = None,
+        on_complete: Optional[CompleteCallback] = None,
         **kwargs,
-    ):
+    ) -> ChatResponse:
         current_trace = get_current_trace()
         disabled = current_trace is None
+
+        stream_cb = on_stream or self.on_stream
+        complete_cb = on_complete or self.on_complete
 
         retry_decorator = retry(
             stop=stop_after_attempt(self.max_retries),
@@ -711,75 +727,70 @@ class Chater:
         if tool_choice:
             kwargs_inner["tool_choice"] = tool_choice
 
-        @retry_decorator
-        async def _do_chat():
-            start_time = datetime.now()
-            response = await self.client.chat.completions.create(**kwargs_inner)
-            return (
-                self._stream(
-                    response,
-                    start_time,
-                )
-                if stream
-                else self._no_stream(
-                    response,
-                    start_time,
-                )
-            )
+        params = (
+            {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]}
+            if not disabled
+            else None
+        )
 
-        if stream:
-            return self._stream_with_trace(await _do_chat(), messages, kwargs_inner, disabled)
-        else:
-            params = (
-                {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]}
-                if not disabled
-                else None
-            )
+        with generation_span(
+            model=kwargs_inner.get("model"),
+            input_msgs=messages if not disabled else None,
+            params=params,
+            disabled=disabled,
+        ) as span:
+            try:
+                @retry_decorator
+                async def _do_chat():
+                    start_time = datetime.now()
+                    response = await self.client.chat.completions.create(**kwargs_inner)
+                    if stream:
+                        return await self._stream(response, start_time, stream_cb)
+                    result = self._no_stream(response, start_time)
+                    if complete_cb:
+                        complete_cb(result)
+                    return result
 
-            with generation_span(
-                model=kwargs_inner.get("model"),
-                input_msgs=messages if not disabled else None,
-                params=params,
-                disabled=disabled,
-            ) as span:
-                try:
-                    result = await _do_chat()
-                    if not disabled:
-                        span.span_data.output_msg = {
-                            "role": result.role,
-                            "content": result.content,
-                            "reasoning_content": result.reasoning_content,
-                            "tool_calls": (
-                                [
-                                    {
-                                        "fn_id": tc.fn_id,
-                                        "fn_name": tc.fn_name,
-                                        "fn_args": tc.fn_args,
-                                    }
-                                    for tc in result.tool_calls
-                                ]
-                                if result.tool_calls
-                                else None
-                            ),
-                        }
+                result = await _do_chat()
+
+                if not disabled:
+                    span.span_data.output_msg = {
+                        "role": result.role,
+                        "content": result.content,
+                        "reasoning_content": result.reasoning_content,
+                        "tool_calls": (
+                            [
+                                {
+                                    "fn_id": tc.fn_id,
+                                    "fn_name": tc.fn_name,
+                                    "fn_args": tc.fn_args,
+                                }
+                                for tc in result.tool_calls
+                            ]
+                            if result.tool_calls
+                            else None
+                        ),
+                    }
+                    if result.usage:
                         span.span_data.usage = {
                             "input_tokens": result.usage.input_tokens,
                             "output_tokens": result.usage.output_tokens,
                             "time": result.usage.time,
                         }
-                    return result
-                except Exception as e:
-                    if not disabled:
-                        span.set_error(
-                            SpanError(
-                                message=f"Model generation failed: {str(e)}",
-                                data={
-                                    "model": kwargs_inner.get("model"),
-                                    "error_type": type(e).__name__,
-                                },
-                            )
+
+                return result
+            except Exception as e:
+                if not disabled:
+                    span.set_error(
+                        SpanError(
+                            message=f"Model generation failed: {str(e)}",
+                            data={
+                                "model": kwargs_inner.get("model"),
+                                "error_type": type(e).__name__,
+                            },
                         )
-                    raise
+                    )
+                raise
 
     def _no_stream(
         self,
@@ -826,19 +837,21 @@ class Chater:
         self,
         response: AsyncStream[ChatCompletionChunk],
         start_time: datetime,
-    ) -> AsyncGenerator[ChatResponse, None]:
-        tool_calls = OrderedDict()
-        completed_calls = set()
-        content, reasoning = "", ""
-        id = uuid.uuid4().hex
+        callback: Optional[StreamCallback] = None,
+    ) -> ChatResponse:
+        tool_calls_map = OrderedDict()
+        full_content = ""
+        full_reasoning = ""
+        resp_id = uuid.uuid4().hex
         created = str(int(time()))
         role = "assistant"
         usage: Optional[ChatUsage] = None
+
         async for chunk in response:
             delta = chunk.choices[0].delta
 
             if chunk.id:
-                id = chunk.id
+                resp_id = chunk.id
             if chunk.created:
                 created = str(chunk.created)
             if hasattr(delta, "role") and delta.role:
@@ -849,121 +862,59 @@ class Chater:
                     output_tokens=chunk.usage.completion_tokens,
                     time=(datetime.now() - start_time).total_seconds(),
                 )
+
+            chunk_response = None
+
             if hasattr(delta, "reasoning_content") and delta.reasoning_content:
-                reasoning = delta.reasoning_content
-                yield ChatResponse(
-                    id=id,
+                full_reasoning += delta.reasoning_content
+                chunk_response = ChatResponse(
+                    id=resp_id,
                     created=created,
                     role=role,
-                    reasoning_content=reasoning,
+                    reasoning_content=delta.reasoning_content,
                     usage=usage,
                 )
 
             if hasattr(delta, "content") and delta.content:
-                content = delta.content
-                yield ChatResponse(id=id, created=created, role=role, content=content, usage=usage)
-
-            current_tool_indices = set()
-            for tool_call in delta.tool_calls or []:
-                current_tool_indices.add(tool_call.index)
-
-                if tool_call.index in tool_calls:
-                    if tool_call.function.arguments:
-                        tool_calls[tool_call.index].fn_args += tool_call.function.arguments
-                else:
-                    tool_calls[tool_call.index] = ToolCall(
-                        fn_id=tool_call.id,
-                        fn_name=tool_call.function.name,
-                        fn_args=tool_call.function.arguments or "",
-                    )
-
-            completed_indices = set(tool_calls.keys()) - current_tool_indices - completed_calls
-            for tool_idx in completed_indices:
-                completed_calls.add(tool_idx)
-                yield ChatResponse(
-                    id=id,
+                full_content += delta.content
+                chunk_response = ChatResponse(
+                    id=resp_id,
                     created=created,
                     role=role,
-                    tool_call=tool_calls[tool_idx],
+                    content=delta.content,
                     usage=usage,
                 )
 
-    async def _stream_with_trace(
-        self,
-        stream_generator: AsyncGenerator[ChatResponse, None],
-        messages: list[dict],
-        kwargs_inner: dict,
-        disabled: bool,
-    ) -> AsyncGenerator[ChatResponse, None]:
-        params = (
-            {k: v for k, v in kwargs_inner.items() if k not in ["messages", "stream", "model"]}
-            if not disabled
-            else None
-        )
-
-        with generation_span(
-            model=kwargs_inner.get("model"),
-            input_msgs=messages if not disabled else None,
-            params=params,
-            disabled=disabled,
-        ) as span:
-            full_content = ""
-            full_reasoning = ""
-            all_tool_calls = []
-            final_usage = None
-            final_role = "assistant"
-
-            try:
-                async for chunk in stream_generator:
-                    if chunk.content:
-                        full_content += chunk.content
-                    if chunk.reasoning_content:
-                        full_reasoning += chunk.reasoning_content
-                    if chunk.tool_call:
-                        all_tool_calls.append(chunk.tool_call)
-                    if chunk.usage:
-                        final_usage = chunk.usage
-                    if chunk.role:
-                        final_role = chunk.role
-
-                    yield chunk
-
-                if not disabled:
-                    span.span_data.output_msg = {
-                        "role": final_role,
-                        "content": full_content or None,
-                        "reasoning_content": full_reasoning or None,
-                        "tool_calls": (
-                            [
-                                {
-                                    "fn_id": tc.fn_id,
-                                    "fn_name": tc.fn_name,
-                                    "fn_args": tc.fn_args,
-                                }
-                                for tc in all_tool_calls
-                            ]
-                            if all_tool_calls
-                            else None
-                        ),
-                    }
-                    if final_usage:
-                        span.span_data.usage = {
-                            "input_tokens": final_usage.input_tokens,
-                            "output_tokens": final_usage.output_tokens,
-                            "time": final_usage.time,
-                        }
-            except Exception as e:
-                if not disabled:
-                    span.set_error(
-                        SpanError(
-                            message=f"Model generation stream failed: {str(e)}",
-                            data={
-                                "model": kwargs_inner.get("model"),
-                                "error_type": type(e).__name__,
-                            },
-                        )
+            for tc in delta.tool_calls or []:
+                if tc.index in tool_calls_map:
+                    if tc.function and tc.function.arguments:
+                        tool_calls_map[tc.index].fn_args += tc.function.arguments
+                else:
+                    tool_calls_map[tc.index] = ToolCall(
+                        fn_id=tc.id or "",
+                        fn_name=tc.function.name if tc.function else "",
+                        fn_args=tc.function.arguments if tc.function else "",
                     )
-                raise
+                chunk_response = ChatResponse(
+                    id=resp_id,
+                    created=created,
+                    role=role,
+                    tool_call=tool_calls_map[tc.index],
+                    usage=usage,
+                )
+
+            if callback and chunk_response:
+                callback(chunk_response)
+
+        return ChatResponse(
+            id=resp_id,
+            created=created,
+            role=role,
+            content=full_content,
+            reasoning_content=full_reasoning,
+            tool_calls=list(tool_calls_map.values()) if tool_calls_map else [],
+            usage=usage,
+        )
 
 
 class Embedder:
@@ -983,37 +934,66 @@ class Embedder:
         self.retry_max_wait = retry_max_wait
 
     async def embed(self, text: list[str], **kwargs) -> EmbedResponse:
+        current_trace = get_current_trace()
+        disabled = current_trace is None
+
         kwargs_inner = {"input": text, **self.embed_cfg.to_dict(), **kwargs}
-        if self.embed_cache:
-            response = await self.embed_cache.retrieve(kwargs_inner)
-            if response:
-                return EmbedResponse(
-                    source="cache", embedding=[np.array(_.embedding) for _ in response]
-                )
 
-        retry_decorator = retry(
-            stop=stop_after_attempt(self.max_retries),
-            wait=wait_exponential(multiplier=1, min=self.retry_min_wait, max=self.retry_max_wait),
-            retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
-            reraise=True,
-        )
-
-        @retry_decorator
-        async def _do_embed():
-            start_time = datetime.now()
-            response = await self.client.embeddings.create(**kwargs_inner)
+        with embedder_span(
+            model=self.embed_cfg.model,
+            input_texts=text if not disabled else None,
+            disabled=disabled,
+        ) as span:
             if self.embed_cache:
-                await self.embed_cache.store(response.data, kwargs_inner)
-            return EmbedResponse(
-                source="api",
-                embedding=[np.array(_.embedding) for _ in response.data],
-                usage=EmbedUsage(
-                    time=(datetime.now() - start_time).total_seconds(),
-                    token=response.usage.total_tokens,
-                ),
+                response = await self.embed_cache.retrieve(kwargs_inner)
+                if response:
+                    result = EmbedResponse(
+                        source="cache", embedding=[np.array(_.embedding) for _ in response]
+                    )
+                    if not disabled:
+                        span.span_data.source = "cache"
+                        if result.embedding:
+                            span.span_data.output_dimensions = len(result.embedding[0])
+                    return result
+
+            retry_decorator = retry(
+                stop=stop_after_attempt(self.max_retries),
+                wait=wait_exponential(multiplier=1, min=self.retry_min_wait, max=self.retry_max_wait),
+                retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
+                reraise=True,
             )
 
-        return await _do_embed()
+            @retry_decorator
+            async def _do_embed():
+                start_time = datetime.now()
+                response = await self.client.embeddings.create(**kwargs_inner)
+                if self.embed_cache:
+                    await self.embed_cache.store(response.data, kwargs_inner)
+                return EmbedResponse(
+                    source="api",
+                    embedding=[np.array(_.embedding) for _ in response.data],
+                    usage=EmbedUsage(
+                        time=(datetime.now() - start_time).total_seconds(),
+                        token=response.usage.total_tokens,
+                    ),
+                )
+
+            try:
+                result = await _do_embed()
+                if not disabled:
+                    span.span_data.source = "api"
+                    if result.embedding:
+                        span.span_data.output_dimensions = len(result.embedding[0])
+                    if result.usage:
+                        span.span_data.usage = {
+                            "time": result.usage.time,
+                            "token": result.usage.token,
+                        }
+                return result
+            except Exception as e:
+                if not disabled:
+                    span.span_data.error = str(e)
+                raise
 
 
 class ChaterPool:
@@ -1024,6 +1004,8 @@ class ChaterPool:
         retry_min_wait: float = 1.0,
         retry_max_wait: float = 10.0,
         circuit_breaker_threshold: int = 5,
+        on_stream: Optional[StreamCallback] = None,
+        on_complete: Optional[CompleteCallback] = None,
     ):
         self.chaters = [
             Chater(cfg, max_retries, retry_min_wait, retry_max_wait) for cfg in chater_cfgs
@@ -1031,6 +1013,8 @@ class ChaterPool:
         self.circuit_breaker_threshold = circuit_breaker_threshold
         self.failure_counts = [0] * len(self.chaters)
         self.success_counts = [0] * len(self.chaters)
+        self.on_stream = on_stream
+        self.on_complete = on_complete
         self.logger = logging.getLogger(__name__)
 
     def _is_circuit_open(self, idx: int) -> bool:
@@ -1049,8 +1033,13 @@ class ChaterPool:
         tools: list[dict] | None = None,
         tool_choice: str | None = None,
         stream: bool = False,
+        on_stream: Optional[StreamCallback] = None,
+        on_complete: Optional[CompleteCallback] = None,
         **kwargs,
-    ):
+    ) -> ChatResponse:
+        stream_cb = on_stream or self.on_stream
+        complete_cb = on_complete or self.on_complete
+
         last_error = None
         for idx, chater in enumerate(self.chaters):
             if self._is_circuit_open(idx):
@@ -1058,7 +1047,9 @@ class ChaterPool:
                 continue
 
             try:
-                response = await chater.chat(messages, tools, tool_choice, stream, **kwargs)
+                response = await chater.chat(
+                    messages, tools, tool_choice, stream, stream_cb, complete_cb, **kwargs
+                )
                 self._record_success(idx)
                 return response
             except NON_RETRYABLE_EXCEPTIONS as e:
@@ -1227,46 +1218,47 @@ def get_embedder_cfg(provider: str) -> EmbedderCfg:
 
 if __name__ == "__main__":
 
+    def stream_handler(chunk: ChatResponse):
+        if chunk.content:
+            print(chunk.content, end="", flush=True)
+        if chunk.reasoning_content:
+            print(chunk.reasoning_content, end="", flush=True)
+
+    def complete_handler(response: ChatResponse):
+        print(f"\n[Complete] content={response.content[:50]}...")
+
     async def main():
-        chater_pool = ChaterPool(
-            [
-                get_chater_cfg("ali"),
-                get_chater_cfg("zhipuai"),
-                get_chater_cfg("siliconflow"),
-                get_chater_cfg("ark"),
-            ],
-            max_retries=3,
-            retry_min_wait=1.0,
-            retry_max_wait=10.0,
-            circuit_breaker_threshold=5,
+        chater = Chater(get_chater_cfg("ali"))
+
+        print("=" * 50)
+        print("Test 1: Non-stream with on_complete callback")
+        print("=" * 50)
+        response = await chater.chat(
+            [{"role": "user", "content": "Hello, say hi in 10 words"}],
+            stream=False,
+            on_complete=complete_handler,
         )
+        print(f"Return: {response.content}")
 
-        embedder_pool = EmbedderPool(
-            [
-                get_embedder_cfg("ali"),
-                get_embedder_cfg("zhipuai"),
-                get_embedder_cfg("siliconflow"),
-                get_embedder_cfg("ark"),
-            ],
-            max_retries=3,
-            retry_min_wait=1.0,
-            retry_max_wait=10.0,
-            circuit_breaker_threshold=5,
+        print("\n" + "=" * 50)
+        print("Test 2: Stream with on_stream callback")
+        print("=" * 50)
+        response = await chater.chat(
+            [{"role": "user", "content": "Count from 1 to 5"}],
+            stream=True,
+            on_stream=stream_handler,
         )
+        print(f"\nReturn: {response}")
 
-        try:
-            response = await chater_pool.chat([{"role": "user", "content": "你好"}])
-            print("Chat response:", response.to_dict())
-
-            health = await chater_pool.health_check()
-            print("Chater pool health:", health)
-
-            embed_response = await embedder_pool.embed(["你好世界"])
-            print("Embed response source:", embed_response.source)
-
-            embed_health = await embedder_pool.health_check()
-            print("Embedder pool health:", embed_health)
-        except ModelError as e:
-            print(f"Error: {e}")
+        print("\n" + "=" * 50)
+        print("Test 3: ChaterPool stream")
+        print("=" * 50)
+        pool = ChaterPool([get_chater_cfg("ali")])
+        response = await pool.chat(
+            [{"role": "user", "content": "Say hello"}],
+            stream=True,
+            on_stream=stream_handler,
+        )
+        print(f"\nReturn: {response}")
 
     asyncio.run(main())

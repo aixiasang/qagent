@@ -208,6 +208,47 @@ class ToolSpanData(SpanData):
         return result
 
 
+class EmbedderSpanData(SpanData):
+    __slots__ = ("model", "input_texts", "output_dimensions", "usage", "source", "error")
+
+    def __init__(
+        self,
+        model: str | None = None,
+        input_texts: list[str] | None = None,
+        output_dimensions: int | None = None,
+        usage: dict[str, Any] | None = None,
+        source: str | None = None,
+        error: str | None = None,
+    ):
+        self.model = model
+        self.input_texts = input_texts
+        self.output_dimensions = output_dimensions
+        self.usage = usage
+        self.source = source
+        self.error = error
+
+    @property
+    def type(self) -> str:
+        return "embedder"
+
+    def export(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"type": self.type}
+        if self.model:
+            result["model"] = self.model
+        if self.input_texts is not None:
+            result["input_count"] = len(self.input_texts)
+            result["input_preview"] = [t[:100] for t in self.input_texts[:3]]
+        if self.output_dimensions is not None:
+            result["output_dimensions"] = self.output_dimensions
+        if self.usage is not None:
+            result["usage"] = self.usage
+        if self.source:
+            result["source"] = self.source
+        if self.error:
+            result["error"] = self.error
+        return result
+
+
 class CustomSpanData(SpanData):
     __slots__ = ("name", "data")
 
@@ -971,6 +1012,21 @@ def tool_span(
 ) -> Span[ToolSpanData]:
     return get_trace_provider().create_span(
         ToolSpanData(tool_name, input_args, output, error),
+        disabled=disabled,
+    )
+
+
+def embedder_span(
+    model: str | None = None,
+    input_texts: list[str] | None = None,
+    output_dimensions: int | None = None,
+    usage: dict[str, Any] | None = None,
+    source: str | None = None,
+    error: str | None = None,
+    disabled: bool = False,
+) -> Span[EmbedderSpanData]:
+    return get_trace_provider().create_span(
+        EmbedderSpanData(model, input_texts, output_dimensions, usage, source, error),
         disabled=disabled,
     )
 

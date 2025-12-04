@@ -231,17 +231,7 @@ class Flow:
 
         if node_def.is_parallel:
             agents = node_def.agent
-            tasks = []
-
-            for agent in agents:
-                async def run_agent(a, msg):
-                    last_resp = None
-                    async for resp in a.reply(msg):
-                        last_resp = resp
-                    return last_resp
-
-                tasks.append(run_agent(agent, input_msg))
-
+            tasks = [agent(input_msg) for agent in agents]
             results = await asyncio.gather(*tasks)
             valid_results = [r for r in results if r is not None]
 
@@ -259,10 +249,7 @@ class Flow:
 
         else:
             agent = node_def.agent
-            last_resp = None
-            async for resp in agent.reply(input_msg):
-                last_resp = resp
-            response = last_resp or ChatResponse(role="assistant", content="")
+            response = await agent(input_msg)
 
         return response
 
@@ -352,12 +339,8 @@ class Flow:
                 agent = node_def.agent
                 last = ctx.last_response()
                 input_msg = last.content if last else message
-
-                last_resp = None
-                async for resp in agent.reply(input_msg, stream=True):
-                    last_resp = resp
-                    yield resp
-                response = last_resp or ChatResponse(role="assistant", content="")
+                response = await agent(input_msg, stream=True)
+                yield response
 
             ctx.messages[current_node] = response
             ctx.history.append((current_node, response))

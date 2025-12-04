@@ -1,5 +1,6 @@
 import asyncio
-from qagent import Agent, Memory, Chater, get_chater_cfg, Runner
+from qagent import Agent, Memory, Chater, get_chater_cfg, Runner, ConsoleSpeaker, make_stream_callback
+
 
 async def main():
     agent = Agent(
@@ -8,12 +9,17 @@ async def main():
         memory=Memory(),
         system_prompt="You are a creative storyteller."
     )
-    
+
     print("Streaming response:")
-    async for chunk in Runner.run_streamed(agent, "Tell me a short story about a robot"):
-        if chunk.content:
-            print(chunk.content, end="", flush=True)
-    print()
+    speaker = ConsoleSpeaker()
+    response = await Runner.run(
+        agent,
+        "Tell me a short story about a robot",
+        stream=True,
+        on_stream=make_stream_callback(speaker)
+    )
+    print(f"\nFinal: {response.content[:50]}...")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

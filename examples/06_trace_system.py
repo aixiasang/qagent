@@ -1,5 +1,5 @@
 import asyncio
-from qagent import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner, trace, export_traces
+from qagent.core import Agent, Memory, Chater, get_chater_cfg, ToolKit, Runner, trace, get_all_traces, get_all_spans
 
 async def multiply(a: float, b: float) -> float:
     return a * b
@@ -24,11 +24,12 @@ async def main():
         result = await Runner.run(agent, "Calculate (5 * 3) + (10 * 2)")
         print(f"Result: {result.content}")
     
-    traces = export_traces()
+    traces = get_all_traces()
+    spans = get_all_spans()
     print(f"\nTrace captured: {len(traces)} trace(s)")
     for trace_data in traces:
         print(f"Trace ID: {trace_data['trace_id']}")
-        print(f"Total spans: {len(trace_data['spans'])}")
+    print(f"Total spans: {len(spans)}")
 
 if __name__ == "__main__":
     asyncio.run(main())

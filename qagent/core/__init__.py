@@ -24,19 +24,25 @@ from ._model import (
     block_to_openai,
     get_chater_cfg,
     get_embedder_cfg,
+    StreamCallback,
+    CompleteCallback,
 )
 from ._prompt import PromptTemplate
 from ._tools import ToolKit, MCPServerConfig
 from ._chunk import Chunk, Sentence, Document, BaseTokenizer
 from ._vb import VectorStore, JsonVectorStore, ChromaVectorStore
-from ._utils import (
-    FileOperations,
-    DirectoryOperations,
-    SearchOperations,
-    image_to_base64,
-    video_to_base64,
+from ._utils import AgentLogger, image_to_base64, video_to_base64
+from ._builtin_tools import FileOperations, DirectoryOperations, SearchOperations, CommandExecutor
+from ._agent import (
+    Agent,
+    BaseAgent,
+    with_reply_hooks,
+    with_observe_hooks,
+    LogConfig,
+    StreamHandler,
+    make_stream_callback,
+    make_complete_callback,
 )
-from ._agent import Agent, BaseAgent, with_reply_hooks, with_observe_hooks
 from ._runner import Runner
 from ._msghub import MsgHub, msghub
 from ._speaker import Speaker, ConsoleSpeaker, SilentSpeaker
@@ -69,6 +75,7 @@ from ._trace import (
     agent_step_span,
     generation_span,
     tool_span,
+    embedder_span,
     custom_span,
     get_current_trace,
     get_current_span,
@@ -93,6 +100,7 @@ from ._trace import (
     AgentStepSpanData,
     GenerationSpanData,
     ToolSpanData,
+    EmbedderSpanData,
     CustomSpanData,
     SpanError,
 )
@@ -128,6 +136,8 @@ __all__ = [
     "FileOperations",
     "DirectoryOperations",
     "SearchOperations",
+    "CommandExecutor",
+    "AgentLogger",
     "get_chater_cfg",
     "get_embedder_cfg",
     "TextBlock",
@@ -159,11 +169,18 @@ __all__ = [
     "HookError",
     "with_reply_hooks",
     "with_observe_hooks",
+    "LogConfig",
+    "StreamHandler",
+    "StreamCallback",
+    "CompleteCallback",
+    "make_stream_callback",
+    "make_complete_callback",
     "trace",
     "agent_span",
     "agent_step_span",
     "generation_span",
     "tool_span",
+    "embedder_span",
     "custom_span",
     "get_current_trace",
     "get_current_span",
@@ -188,6 +205,7 @@ __all__ = [
     "AgentStepSpanData",
     "GenerationSpanData",
     "ToolSpanData",
+    "EmbedderSpanData",
     "CustomSpanData",
     "SpanError",
     "Flow",

@@ -1,9 +1,6 @@
-from typing import Union, Callable, Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ._agent import Agent
-    from ._model import ChatResponse
-
+from typing import Union, Callable, Optional
+from ._agent import Agent
+from ._model import ChatResponse
 from ._trace import custom_span, get_current_trace, get_current_span
 
 
@@ -45,17 +42,15 @@ async def _execute_pipeline(
     current_msg = initial_message
 
     for agent in agents:
-        if callable(agent):
+        if callable(agent) and not hasattr(agent, "reply"):
             result = agent(current_msg)
             if hasattr(result, "__await__"):
                 current_msg = await result
             else:
                 current_msg = result
         else:
-            last_response = None
-            async for response in agent.reply(current_msg.content if current_msg else ""):
-                last_response = response
-            current_msg = last_response
+            msg_content = current_msg.content if current_msg else ""
+            current_msg = await agent(msg_content)
 
     return current_msg
 
@@ -65,26 +60,18 @@ async def parallel_pipeline(
 ) -> list["ChatResponse"]:
     import asyncio
 
-    async def consume_agent_reply(agent, msg_content):
-        last_response = None
-        async for response in agent.reply(msg_content):
-            last_response = response
-        return last_response
-
     tasks = []
     for agent in agents:
-        if callable(agent):
+        if callable(agent) and not hasattr(agent, "reply"):
             result = agent(message)
             if hasattr(result, "__await__"):
                 tasks.append(result)
             else:
-
-                async def wrap_sync():
-                    return result
-
+                async def wrap_sync(r=result):
+                    return r
                 tasks.append(wrap_sync())
         else:
-            tasks.append(consume_agent_reply(agent, message.content))
+            tasks.append(agent(message.content))
 
     return await asyncio.gather(*tasks)
 
@@ -97,16 +84,13 @@ async def conditional_pipeline(
 ) -> "ChatResponse":
     agent = true_agent if condition(message) else false_agent
 
-    if callable(agent):
+    if callable(agent) and not hasattr(agent, "reply"):
         result = agent(message)
         if hasattr(result, "__await__"):
             return await result
         return result
 
-    last_response = None
-    async for response in agent.reply(message.content):
-        last_response = response
-    return last_response
+    return await agent(message.content)
 
 
 async def loop_pipeline(
@@ -119,17 +103,14 @@ async def loop_pipeline(
 
     for i in range(max_iterations):
         for agent in agents:
-            if callable(agent):
+            if callable(agent) and not hasattr(agent, "reply"):
                 result = agent(current_msg)
                 if hasattr(result, "__await__"):
                     current_msg = await result
                 else:
                     current_msg = result
             else:
-                last_response = None
-                async for response in agent.reply(current_msg.content):
-                    last_response = response
-                current_msg = last_response
+                current_msg = await agent(current_msg.content)
 
         if stop_condition and stop_condition(current_msg):
             break
