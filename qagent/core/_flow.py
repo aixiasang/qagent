@@ -391,8 +391,11 @@ if __name__ == "__main__":
                 self.name = name
                 self._response = response
 
-            async def reply(self, message: str, stream: bool = False):
-                yield ChatResponse(role="assistant", content=f"{self.name}: {self._response}")
+            async def __call__(self, message: str, stream: bool = False) -> ChatResponse:
+                return await self.reply(message, stream)
+
+            async def reply(self, message: str, stream: bool = False) -> ChatResponse:
+                return ChatResponse(role="assistant", content=f"{self.name}: {self._response}")
 
         agent_a = MockAgent("AgentA", "Step 1 done")
         agent_b = MockAgent("AgentB", "Step 2 done")
@@ -412,8 +415,11 @@ if __name__ == "__main__":
                 self.name = name
                 self._response = response
 
-            async def reply(self, message: str, stream: bool = False):
-                yield ChatResponse(role="assistant", content=self._response)
+            async def __call__(self, message: str, stream: bool = False) -> ChatResponse:
+                return await self.reply(message, stream)
+
+            async def reply(self, message: str, stream: bool = False) -> ChatResponse:
+                return ChatResponse(role="assistant", content=self._response)
 
         planner = MockAgent("Planner", "Plan created")
         executor = MockAgent("Executor", "Executed")
@@ -441,10 +447,13 @@ if __name__ == "__main__":
                 self.name = "Counter"
                 self.count = 0
 
-            async def reply(self, message: str, stream: bool = False):
+            async def __call__(self, message: str, stream: bool = False) -> ChatResponse:
+                return await self.reply(message, stream)
+
+            async def reply(self, message: str, stream: bool = False) -> ChatResponse:
                 self.count += 1
                 status = "DONE" if self.count >= 3 else "CONTINUE"
-                yield ChatResponse(role="assistant", content=f"Count: {self.count}, Status: {status}")
+                return ChatResponse(role="assistant", content=f"Count: {self.count}, Status: {status}")
 
         counter = CounterAgent()
 
@@ -463,8 +472,11 @@ if __name__ == "__main__":
                 self.name = name
                 self._response = response
 
-            async def reply(self, message: str, stream: bool = False):
-                yield ChatResponse(role="assistant", content=self._response)
+            async def __call__(self, message: str, stream: bool = False) -> ChatResponse:
+                return await self.reply(message, stream)
+
+            async def reply(self, message: str, stream: bool = False) -> ChatResponse:
+                return ChatResponse(role="assistant", content=self._response)
 
         tech = MockAgent("Tech", "Technical analysis")
         biz = MockAgent("Business", "Business analysis")
@@ -489,8 +501,11 @@ if __name__ == "__main__":
                 self.name = name
                 self._response = response
 
-            async def reply(self, message: str, stream: bool = False):
-                yield ChatResponse(role="assistant", content=f"{self.name}: {self._response}")
+            async def __call__(self, message: str, stream: bool = False) -> ChatResponse:
+                return await self.reply(message, stream)
+
+            async def reply(self, message: str, stream: bool = False) -> ChatResponse:
+                return ChatResponse(role="assistant", content=f"{self.name}: {self._response}")
 
         inner_a = MockAgent("InnerA", "Inner step 1")
         inner_b = MockAgent("InnerB", "Inner step 2")
@@ -517,8 +532,11 @@ if __name__ == "__main__":
             def __init__(self, name: str):
                 self.name = name
 
-            async def reply(self, message: str, stream: bool = False):
-                yield ChatResponse(role="assistant", content=f"{self.name} processed")
+            async def __call__(self, message: str, stream: bool = False) -> ChatResponse:
+                return await self.reply(message, stream)
+
+            async def reply(self, message: str, stream: bool = False) -> ChatResponse:
+                return ChatResponse(role="assistant", content=f"{self.name} processed")
 
         a = MockAgent("A")
         b = MockAgent("B")

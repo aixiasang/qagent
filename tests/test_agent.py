@@ -19,18 +19,17 @@ async def test_agent_creation(basic_agent):
 
 @pytest.mark.asyncio
 async def test_agent_reply(basic_agent):
-    response = None
-    async for resp in basic_agent.reply("Hello"):
-        response = resp
+    # Agent.reply() returns ChatResponse directly, not an async generator
+    response = await basic_agent.reply("Hello")
     
     assert response is not None
     assert response.content == "Mock response"
 
 @pytest.mark.asyncio
 async def test_agent_memory(basic_agent):
-    async for _ in basic_agent.reply("Test message"):
-        pass
+    await basic_agent.reply("Test message")
     
+    # Memory should have at least user message and assistant response
     assert len(basic_agent.memory) >= 2
 
 @pytest.mark.asyncio
@@ -42,8 +41,7 @@ async def test_agent_observe(basic_agent):
 
 @pytest.mark.asyncio
 async def test_agent_clear_memory(basic_agent):
-    async for _ in basic_agent.reply("Test"):
-        pass
+    await basic_agent.reply("Test")
     
     basic_agent.clear_memory()
     assert len(basic_agent.memory) == 0
@@ -62,8 +60,8 @@ async def test_agent_hooks(basic_agent):
         hook_called.append("post")
         return response
     
-    async for _ in basic_agent.reply("Test"):
-        pass
+    # Use __call__ (not reply) to trigger hooks - @with_reply_hooks decorates __call__
+    await basic_agent("Test")
     
     assert "pre" in hook_called
     assert "post" in hook_called

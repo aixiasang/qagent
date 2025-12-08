@@ -1,3 +1,9 @@
+"""
+Tests for Runner module.
+
+Tests the various static methods for running agents.
+"""
+
 import pytest
 from qagent import Agent, Memory, Runner, ChatResponse
 
@@ -11,23 +17,28 @@ def mock_agent(mock_chater):
         system_prompt="Test"
     )
 
+
 @pytest.mark.asyncio
 async def test_runner_single_agent(mock_agent):
+    """Test Runner.run with a single agent."""
     result = await Runner.run(mock_agent, "Test message")
     
     assert result is not None
     assert result.content == "Mock response"
 
+
 @pytest.mark.asyncio
-async def test_runner_streamed(mock_agent):
-    chunks = []
-    async for chunk in Runner.run_streamed(mock_agent, "Test"):
-        chunks.append(chunk)
+async def test_runner_with_reply(mock_agent):
+    """Test Runner.run_with_reply method."""
+    result = await Runner.run_with_reply(mock_agent, "Test message")
     
-    assert len(chunks) > 0
+    assert result is not None
+    assert result.content == "Mock response"
+
 
 @pytest.mark.asyncio
 async def test_runner_sequential(mock_chater):
+    """Test Runner.run_sequential with multiple agents."""
     agent1 = Agent(
         name="Agent1",
         chater=mock_chater,
@@ -44,9 +55,12 @@ async def test_runner_sequential(mock_chater):
     result = await Runner.run_sequential([agent1, agent2], "Test")
     
     assert result is not None
+    assert result.content == "Mock response"
+
 
 @pytest.mark.asyncio
 async def test_runner_parallel(mock_chater):
+    """Test Runner.run_parallel with multiple agents."""
     agents = [
         Agent(
             name=f"Agent{i}",
@@ -60,8 +74,24 @@ async def test_runner_parallel(mock_chater):
     results = await Runner.run_parallel(agents, "Test")
     
     assert len(results) == 3
+    for result in results:
+        assert result.content == "Mock response"
+
 
 @pytest.mark.asyncio
-async def test_runner_auto_speak(mock_agent):
-    result = await Runner.run(mock_agent, "Test", auto_speak=True)
+async def test_runner_with_stream_callback(mock_agent):
+    """Test Runner.run with stream callback."""
+    completed = []
+    
+    def on_complete(response):
+        completed.append(response)
+    
+    result = await Runner.run(
+        mock_agent, 
+        "Test", 
+        stream=False, 
+        on_complete=on_complete
+    )
+    
     assert result is not None
+    assert len(completed) == 1

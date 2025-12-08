@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional, Union, Callable, Dict, List
 
+from typing import TYPE_CHECKING
+
 from ..core import (
     Agent,
     Memory,
@@ -12,6 +14,9 @@ from ..core import (
     ChaterPool,
     ToolKit,
 )
+
+if TYPE_CHECKING:
+    from ..core._agent import LogConfig
 
 REACT_SYSTEM_PROMPT = """You are an AI assistant that uses the ReAct (Reasoning and Acting) framework to solve problems.
 

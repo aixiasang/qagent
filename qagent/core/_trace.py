@@ -21,6 +21,9 @@ _current_span: contextvars.ContextVar["Span[Any] | None"] = contextvars.ContextV
 _current_trace: contextvars.ContextVar["Trace | None"] = contextvars.ContextVar(
     "current_trace", default=None
 )
+_console_depth: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "console_depth", default=0
+)
 
 
 def gen_trace_id() -> str:
@@ -305,31 +308,47 @@ class TracingProcessor(abc.ABC):
 
 
 class ConsoleTracingProcessor(TracingProcessor):
+    """Console tracing processor with coroutine-safe depth tracking.
+    
+    Uses contextvars for depth tracking to ensure correct indentation
+    in concurrent/async scenarios where multiple coroutines may be
+    executing spans simultaneously.
+    """
+    
     def __init__(self, verbose: bool = True):
         self.verbose = verbose
-        self._depth = 0
+
+    def _get_depth(self) -> int:
+        """Get current depth from contextvars (coroutine-safe)."""
+        return _console_depth.get()
+
+    def _set_depth(self, depth: int) -> None:
+        """Set current depth in contextvars (coroutine-safe)."""
+        _console_depth.set(depth)
 
     def on_trace_start(self, trace: "Trace") -> None:
         if self.verbose:
             print(f"[Trace Start] {trace.trace_id} - {trace.name}")
-        self._depth = 0
+        self._set_depth(0)
 
     def on_trace_end(self, trace: "Trace") -> None:
         if self.verbose:
             print(f"[Trace End] {trace.trace_id} - {trace.name}")
 
     def on_span_start(self, span: "Span[Any]") -> None:
+        current_depth = self._get_depth()
         if self.verbose:
-            indent = "  " * self._depth
+            indent = "  " * current_depth
             span_type = span.span_data.type
             span_info = self._get_span_info(span)
             print(f"{indent}[Span Start] {span_type} - {span_info}")
-        self._depth += 1
+        self._set_depth(current_depth + 1)
 
     def on_span_end(self, span: "Span[Any]") -> None:
-        self._depth = max(0, self._depth - 1)
+        current_depth = max(0, self._get_depth() - 1)
+        self._set_depth(current_depth)
         if self.verbose:
-            indent = "  " * self._depth
+            indent = "  " * current_depth
             duration = self._calc_duration(span)
             print(f"{indent}[Span End] {span.span_data.type} ({duration}ms)")
 

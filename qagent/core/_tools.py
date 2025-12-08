@@ -224,8 +224,8 @@ class ToolKit:
                 if asyncio.iscoroutinefunction(func):
                     result = await func(**kwargs)
                 else:
-                    loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(None, lambda: func(**kwargs))
+                    # Use asyncio.to_thread for sync functions (Python 3.9+)
+                    result = await asyncio.to_thread(func, **kwargs)
 
                 if not disabled:
                     span.span_data.output = result

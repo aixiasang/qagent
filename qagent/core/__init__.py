@@ -29,7 +29,6 @@ from ._model import (
 )
 from ._prompt import PromptTemplate
 from ._tools import ToolKit, MCPServerConfig
-from ._chunk import Chunk, Sentence, Document, BaseTokenizer
 from ._vb import VectorStore, JsonVectorStore, ChromaVectorStore
 from ._utils import AgentLogger, image_to_base64, video_to_base64
 from ._builtin_tools import FileOperations, DirectoryOperations, SearchOperations, CommandExecutor
@@ -126,10 +125,6 @@ __all__ = [
     "PromptTemplate",
     "ToolKit",
     "MCPServerConfig",
-    "Chunk",
-    "Sentence",
-    "Document",
-    "BaseTokenizer",
     "VectorStore",
     "JsonVectorStore",
     "ChromaVectorStore",

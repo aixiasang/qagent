@@ -11,23 +11,28 @@ class MockChater:
         self.tool_calls = tool_calls or []
         self.call_count = 0
     
-    async def chat(self, messages, stream=False, tools=None, tool_choice=None):
+    async def chat(
+        self,
+        messages,
+        tools=None,
+        tool_choice=None,
+        stream=False,
+        on_stream=None,
+        on_complete=None,
+        **kwargs
+    ):
         self.call_count += 1
         
-        if stream:
-            async def generate():
-                yield ChatResponse(
-                    role="assistant",
-                    content=self.response_content,
-                    tool_calls=self.tool_calls if self.tool_calls else None
-                )
-            return generate()
-        
-        return ChatResponse(
+        response = ChatResponse(
             role="assistant",
             content=self.response_content,
             tool_calls=self.tool_calls if self.tool_calls else None
         )
+        
+        if on_complete:
+            on_complete(response)
+        
+        return response
 
 
 @pytest.fixture
